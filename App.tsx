@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Step } from './types';
 import Stepper from './components/Stepper';
@@ -32,10 +33,10 @@ export default function App(): React.ReactNode {
             <SparklesIcon className="w-12 h-12 text-blue-500" />
             <div>
               <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-400 dark:to-purple-500">
-                WordPress SEO Optimizer
+                ContentForge AI
               </h1>
               <p className="text-md text-slate-600 dark:text-slate-400 hidden sm:block">
-                Elevate content with AI-powered interactive tools.
+                Forge AI-powered interactive tools for your content.
               </p>
             </div>
           </div>
