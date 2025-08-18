@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Button } from './common/Button';
 import { Spinner } from './common/Spinner';
@@ -25,10 +26,10 @@ export default function Step1Configure(): React.ReactNode {
   };
 
   return (
-    <div className="animate-fade-in space-y-12">
+    <div className="animate-fade-in space-y-8 sm:space-y-12">
       {/* API Configuration */}
       <section>
-         <h2 className="text-2xl font-bold mb-1 text-slate-800 dark:text-slate-100">1. Configure AI Provider</h2>
+         <h2 className="text-xl sm:text-2xl font-bold mb-1 text-slate-800 dark:text-slate-100">1. Configure AI Provider</h2>
          <p className="text-slate-600 dark:text-slate-400 mb-6">
           Select an AI provider and enter your API key to power the content generation.
         </p>
@@ -38,8 +39,8 @@ export default function Step1Configure(): React.ReactNode {
       {/* WordPress Configuration */}
       <section>
         <div className="text-center mb-8">
-          <WordPressIcon className="w-16 h-16 mx-auto text-blue-500 dark:text-blue-400" />
-          <h2 className="text-2xl font-bold mt-4 text-slate-800 dark:text-slate-100">2. Connect to WordPress</h2>
+          <WordPressIcon className="w-14 h-14 sm:w-16 sm:h-16 mx-auto text-blue-500 dark:text-blue-400" />
+          <h2 className="text-xl sm:text-2xl font-bold mt-4 text-slate-800 dark:text-slate-100">2. Connect to WordPress</h2>
           <p className="text-slate-600 dark:text-slate-400">
             Enter your site details to begin analyzing your content.
           </p>

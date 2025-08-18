@@ -72,7 +72,7 @@ const PostCard: React.FC<{
                         onClick={handleDeleteClick}
                         variant="secondary"
                         size="normal"
-                        className="!text-xs !py-1 !px-2.5 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 focus:ring-red-500"
+                        className="!text-sm !py-1.5 !px-3 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 focus:ring-red-500"
                     >
                         Delete Tool
                     </Button>
@@ -94,7 +94,7 @@ const IdeaCard: React.FC<{ idea: ToolIdea, onSelect: () => void }> = ({ idea, on
       </div>
       <p className="mt-3 text-slate-600 dark:text-slate-300">{idea.description}</p>
     </div>
-    <Button onClick={onSelect} className="mt-4 self-start">
+    <Button onClick={onSelect} className="mt-4 w-full sm:w-auto sm:self-start">
       Select & Generate HTML
     </Button>
   </Card>
@@ -148,7 +148,7 @@ export default function Step2Analyze(): React.ReactNode {
     if (status === 'loading' && toolIdeas.length === 0) {
         return (
             <div className="text-center">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 <SkeletonIdeaCard/>
                 <SkeletonIdeaCard/>
                 <SkeletonIdeaCard/>
@@ -167,7 +167,7 @@ export default function Step2Analyze(): React.ReactNode {
      }
      
      return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
              {toolIdeas.map((idea, index) => (
               <IdeaCard key={index} idea={idea} onSelect={() => selectIdea(idea)} />
             ))}
@@ -176,9 +176,9 @@ export default function Step2Analyze(): React.ReactNode {
   };
   
   return (
-    <div className="animate-fade-in space-y-12">
+    <div className="animate-fade-in space-y-8 sm:space-y-12">
       <section>
-        <h2 className="text-2xl font-bold mb-4 text-slate-800 dark:text-slate-100">1. Select a Post</h2>
+        <h2 className="text-xl sm:text-2xl font-bold mb-4 text-slate-800 dark:text-slate-100">1. Select a Post</h2>
         <div className="mb-6">
             <Input 
                 type="search"
@@ -188,7 +188,7 @@ export default function Step2Analyze(): React.ReactNode {
                 onChange={(e) => setPostSearchQuery(e.target.value)}
             />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredPosts.length > 0 ? (
             filteredPosts.map((post) => (
               <PostCard 
@@ -209,7 +209,7 @@ export default function Step2Analyze(): React.ReactNode {
       </section>
 
       <section>
-        <h2 className="text-2xl font-bold mb-4 text-slate-800 dark:text-slate-100">
+        <h2 className="text-xl sm:text-2xl font-bold mb-4 text-slate-800 dark:text-slate-100">
             2. Choose an Idea
             {selectedPost && <span className="text-lg text-slate-500 dark:text-slate-400 font-normal ml-2" dangerouslySetInnerHTML={{__html: `for "${selectedPost.title.rendered}"`}}/>}
         </h2>

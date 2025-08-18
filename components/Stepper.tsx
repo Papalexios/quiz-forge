@@ -32,9 +32,9 @@ const StepItem: React.FC<{
   return (
     <div className="flex flex-col sm:flex-row items-center gap-3 z-10">
       <div
-        className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ease-in-out transform ${getStatusClasses()}`}
+        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ease-in-out transform ${getStatusClasses()}`}
       >
-        {isCompleted ? <CheckIcon className="w-7 h-7" /> : icon}
+        {isCompleted ? <CheckIcon className="w-6 h-6 sm:w-7 sm:h-7" /> : icon}
       </div>
       <div className="text-center sm:text-left">
         <h3
@@ -51,14 +51,14 @@ const StepItem: React.FC<{
 
 export default function Stepper({ currentStep }: StepperProps): React.ReactNode {
   const steps = [
-    { step: Step.Configure, icon: <CogIcon className="w-7 h-7" /> },
-    { step: Step.Analyze, icon: <LightbulbIcon className="w-7 h-7" /> },
-    { step: Step.Generate, icon: <SparklesIcon className="w-7 h-7" /> },
+    { step: Step.Configure, icon: <CogIcon className="w-6 h-6 sm:w-7 sm:h-7" /> },
+    { step: Step.Analyze, icon: <LightbulbIcon className="w-6 h-6 sm:w-7 sm:h-7" /> },
+    { step: Step.Generate, icon: <SparklesIcon className="w-6 h-6 sm:w-7 sm:h-7" /> },
   ];
 
   return (
     <div className="relative max-w-2xl mx-auto">
-      <div className="absolute top-6 left-0 w-full h-1 bg-slate-200 dark:bg-slate-700" aria-hidden="true">
+      <div className="absolute top-5 sm:top-6 left-0 w-full h-1 bg-slate-200 dark:bg-slate-700" aria-hidden="true">
         <div 
           className="h-1 bg-blue-600 dark:bg-blue-500 transition-all duration-500 ease-in-out" 
           style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}

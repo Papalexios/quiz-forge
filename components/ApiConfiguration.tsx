@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import { AiProvider } from '../types';
@@ -44,13 +45,13 @@ export default function ApiConfiguration(): React.ReactNode {
   };
 
   return (
-    <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+    <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700">
       <div className="flex flex-wrap items-center gap-2 mb-6">
         {Object.values(AiProvider).map((provider) => (
           <button
             key={provider}
             onClick={() => setProvider(provider)}
-            className={`flex items-center gap-2.5 px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-200 ${
+            className={`flex items-center gap-2.5 px-3 py-2 sm:px-4 text-sm font-semibold rounded-full transition-colors duration-200 ${
               selectedProvider === provider
                 ? 'bg-blue-600 text-white shadow'
                 : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'

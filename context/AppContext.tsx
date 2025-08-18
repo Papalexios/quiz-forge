@@ -1,10 +1,12 @@
-import React, { createContext, useReducer, useContext, useCallback, useMemo } from 'react';
+
+import React, { createContext, useReducer, useContext, useCallback, useMemo, useEffect } from 'react';
 import { AppState, Step, WordPressConfig, WordPressPost, ToolIdea, AiProvider, ApiKeys, ApiValidationStatuses, ApiValidationStatus } from '../types';
 import { fetchPosts, updatePost } from '../services/wordpressService';
 import { validateApiKey, suggestToolIdeas, insertSnippetIntoContent, generateHtmlSnippetStream } from '../services/aiService';
 
 type Action =
   | { type: 'RESET' }
+  | { type: 'RESET_TO_ANALYZE' }
   | { type: 'START_LOADING'; payload?: 'ideas' | 'snippet' | 'insert' }
   | { type: 'SET_ERROR'; payload: string }
   | { type: 'CONFIGURE_SUCCESS'; payload: { config: WordPressConfig; posts: WordPressPost[] } }
@@ -62,6 +64,18 @@ const appReducer = (state: AppState, action: Action): AppState => {
       sessionStorage.removeItem(WP_CONFIG_KEY);
       // Keep API keys on reset
       return { ...initialState, apiKeys: state.apiKeys, apiValidationStatuses: state.apiValidationStatuses, selectedProvider: state.selectedProvider, openRouterModel: state.openRouterModel };
+    case 'RESET_TO_ANALYZE':
+      return {
+        ...state,
+        currentStep: Step.Analyze,
+        status: 'idle',
+        error: null,
+        deletingPostId: null,
+        selectedPost: null,
+        toolIdeas: [],
+        selectedIdea: null,
+        generatedSnippet: '',
+      };
     case 'START_LOADING':
       return { ...state, status: 'loading', error: null };
     case 'SET_ERROR':
@@ -140,6 +154,7 @@ const AppContext = createContext<{
   deleteSnippet: (postId: number) => Promise<void>;
   setPostSearchQuery: (query: string) => void;
   reset: () => void;
+  resetToAnalyze: () => void;
   setProvider: (provider: AiProvider) => void;
   setApiKey: (provider: AiProvider, key: string) => void;
   setOpenRouterModel: (model: string) => void;
@@ -182,6 +197,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   });
   
   const reset = useCallback(() => dispatch({ type: 'RESET' }), []);
+  const resetToAnalyze = useCallback(() => dispatch({ type: 'RESET_TO_ANALYZE' }), []);
 
   const connectToWordPress = useCallback(async (config: WordPressConfig) => {
     dispatch({ type: 'START_LOADING' });
@@ -258,6 +274,31 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const toolSnippet = doc.querySelector('[data-wp-seo-optimizer-tool="true"]');
         
         if (toolSnippet) {
+            // For backwards compatibility, find and remove an adjacent Tailwind script tag from older snippets.
+            // New snippets have the script tag inside the tool, so this logic won't affect them.
+            const findAndRemoveAdjacentScript = (startNode: Node | null, direction: 'previous' | 'next') => {
+                let currentNode = startNode;
+                 // Traverse past any whitespace text nodes.
+                while (currentNode && currentNode.nodeType === Node.TEXT_NODE && /^\s*$/.test(currentNode.textContent || '')) {
+                    currentNode = direction === 'previous' ? currentNode.previousSibling : currentNode.nextSibling;
+                }
+                // If the adjacent node is the Tailwind script, remove it.
+                if (currentNode && currentNode.nodeType === Node.ELEMENT_NODE) {
+                    const element = currentNode as Element;
+                    if (element.tagName.toLowerCase() === 'script' && (element as HTMLScriptElement).src.includes('cdn.tailwindcss.com')) {
+                        element.remove();
+                        return true; // Script found and removed
+                    }
+                }
+                return false; // Script not found
+            };
+            
+            // Check previous sibling first, then next sibling if not found.
+            if (!findAndRemoveAdjacentScript(toolSnippet.previousSibling, 'previous')) {
+                findAndRemoveAdjacentScript(toolSnippet.nextSibling, 'next');
+            }
+            
+            // Finally, remove the main tool container.
             toolSnippet.remove();
         }
         
@@ -301,24 +342,24 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [state.apiKeys, state.selectedProvider, state.openRouterModel]);
 
   const validateAndSaveApiKey = useCallback(async (provider: AiProvider) => {
-      const apiKey = state.apiKeys[provider];
-      if (!apiKey) {
-          dispatch({ type: 'SET_VALIDATION_STATUS', payload: { provider, status: 'invalid' }});
-          return;
-      }
-      dispatch({ type: 'SET_VALIDATION_STATUS', payload: { provider, status: 'validating' }});
-      try {
-        const isValid = await validateApiKey(provider, apiKey, provider === AiProvider.OpenRouter ? state.openRouterModel : undefined);
-        if (isValid) {
-            dispatch({ type: 'SET_VALIDATION_STATUS', payload: { provider, status: 'valid' }});
-            saveAiConfigToLocalStorage();
-        } else {
-             dispatch({ type: 'SET_VALIDATION_STATUS', payload: { provider, status: 'invalid' }});
-        }
-      } catch (e) {
-         dispatch({ type: 'SET_VALIDATION_STATUS', payload: { provider, status: 'invalid' }});
-      }
+    dispatch({ type: 'SET_VALIDATION_STATUS', payload: { provider, status: 'validating' } });
+    const apiKey = state.apiKeys[provider];
+    const model = state.openRouterModel;
+
+    const isValid = await validateApiKey(provider, apiKey, model);
+
+    if (isValid) {
+      dispatch({ type: 'SET_VALIDATION_STATUS', payload: { provider, status: 'valid' } });
+      saveAiConfigToLocalStorage();
+    } else {
+      dispatch({ type: 'SET_VALIDATION_STATUS', payload: { provider, status: 'invalid' } });
+    }
   }, [state.apiKeys, state.openRouterModel, saveAiConfigToLocalStorage]);
+  
+  // Effect to save AI configuration to localStorage whenever it changes
+  useEffect(() => {
+    saveAiConfigToLocalStorage();
+  }, [state.apiKeys, state.selectedProvider, state.openRouterModel, saveAiConfigToLocalStorage]);
 
 
   const value = useMemo(() => ({
@@ -332,11 +373,28 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     deleteSnippet,
     setPostSearchQuery,
     reset,
+    resetToAnalyze,
     setProvider,
     setApiKey,
     setOpenRouterModel,
     validateAndSaveApiKey,
-  }), [state, connectToWordPress, selectPost, selectIdea, setThemeColor, generateSnippet, insertSnippet, deleteSnippet, setPostSearchQuery, reset, setProvider, setApiKey, setOpenRouterModel, validateAndSaveApiKey]);
+  }), [
+    state, 
+    connectToWordPress, 
+    selectPost, 
+    selectIdea, 
+    setThemeColor, 
+    generateSnippet, 
+    insertSnippet, 
+    deleteSnippet, 
+    setPostSearchQuery, 
+    reset,
+    resetToAnalyze,
+    setProvider,
+    setApiKey,
+    setOpenRouterModel,
+    validateAndSaveApiKey
+  ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

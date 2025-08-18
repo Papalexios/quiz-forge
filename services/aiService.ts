@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, ToolIdea, AiProvider } from '../types';
 import { AI_PROVIDERS } from "../constants";
@@ -191,174 +192,171 @@ const getHtmlGenerationPrompt = (postTitle: string, postContent: string, idea: T
     const themeHslString = `${themeHsl.h} ${themeHsl.s}% ${themeHsl.l}%`;
     
     return `
-    You are a world-class Principal Engineer and a multi-award-winning UI/UX visionary. Your work is inspired by the pixel-perfect precision of Stripe, the fluid interactivity of Linear, and the minimalist elegance of Apple. Your singular mission is to architect an interactive micro-tool that is not merely useful, but an unforgettable masterpiece of digital craftsmanship. It must be so intuitive, beautiful, and robust that it significantly elevates the user's experience and trust.
+    **Persona:** You are a world-class senior front-end engineer and UI/UX designer from a top-tier digital agency. Your work is known for being modern, beautiful, highly interactive, and featured on sites like Awwwards. You are an expert in creating premium, self-contained web components using Tailwind CSS.
 
-    Blog Post Title: "${postTitle}"
-    Tool Idea: "${idea.title}"
-    Tool Description: "${idea.description}"
-    Context from blog post: "${cleanContent}"
-    Initial Accent Color (HSL): "${themeHslString}"
+    **Mission:** Generate a single, complete, self-contained HTML snippet for an interactive tool. This snippet will be injected directly into a Shadow DOM. The final output must be **ONLY the raw HTML code** and nothing else.
 
-    **Core Directives (Absolute Requirements):**
+    **Tool Request:**
+    *   **Blog Post Title:** "${postTitle}"
+    *   **Tool Idea:** "${idea.title}"
+    *   **Description:** "${idea.description}"
+    *   **Content Context:** "${cleanContent}"
+    *   **Primary Accent Color (HSL):** ${themeHslString}
 
-    1.  **Flawless, "Hyper-Intelligent" Functionality:**
-        *   **Exceed All Expectations:** Don't just build the requested tool; anticipate user needs. If it's a calculator, show the formula and have a "copy result" button that provides feedback. If it's a checklist, auto-save progress to local storage. Proactively add features that make the user say "wow."
-        *   **Bulletproof Logic & Validation:** The JavaScript MUST be bulletproof, modern (ES6+), and completely bug-free. Implement instant, inline validation that provides clear, friendly error messages directly in the UI, not via browser alerts. Handle all edge cases gracefully.
-        *   **Thoughtful State Management:** All state should be managed cleanly within the script. The UI must react instantly and accurately to user input.
-        *   **Performance as a Feature:** The tool must be lightning-fast. All code must be highly optimized. Avoid any layout shifts or slow computations.
+    **Design & UX Principles (Follow these strictly):**
+    1.  **Aesthetic:** Modern, premium, and clean. Use generous spacing, soft shadows (e.g., \`shadow-lg\`, \`shadow-xl\`), rounded corners (\`rounded-xl\`, \`rounded-2xl\`), and subtle gradients where appropriate. The UI should feel polished and high-quality.
+    2.  **Interactivity:** The tool must be highly interactive and provide immediate feedback. Use subtle transitions and animations (\`transition-all\`, \`duration-300\`) on hover/focus states to make the UI feel alive.
+    3.  **Typography:** Use a clean, readable font stack. Ensure clear visual hierarchy with varying font sizes and weights (e.g., \`text-lg\`, \`font-bold\`, \`text-slate-500\`).
+    4.  **Dark Mode:** Dark mode is a first-class citizen. Every element MUST be perfectly styled for both light and dark modes using Tailwind's \`dark:\` variants. The dark theme should be sleek and elegant.
+    5.  **Responsiveness:** The layout must be fully responsive and look excellent on all screen sizes, from mobile to desktop.
+    6.  **Accessibility:** Adhere to WCAG AA standards. Use semantic HTML, ARIA attributes where necessary, and ensure all interactive elements are keyboard-navigable and have clear focus states (e.g., \`focus:ring-2\`).
 
-    2.  **Awe-Inspiring "Masterpiece" Aesthetics & UX:**
-        *   **Breathtaking Visuals (Modern Glassmorphism):** The tool's container MUST be a visually stunning card. It must have a semi-transparent, blurred background (e.g., \`bg-white/60 dark:bg-black/40 backdrop-blur-xl\`), elegant rounded corners (\`rounded-2xl\`), a subtle border (\`border border-white/20\`), and a soft, professional shadow (\`shadow-2xl\`) to create a sense of depth.
-        *   **Sophisticated & Themed Palette:**
-            *   You MUST define a CSS variable \`--accent-color\` for your tool, initialized with the HSL values **${themeHslString}**. Add an inline style to the main container: \`style="--accent-color: ${themeHslString};"\`.
-            *   Use this variable for all interactive elements (buttons, active borders, highlights) via \`hsl(var(--accent-color))\`.
-            *   You MUST derive secondary colors from this accent for a harmonious theme (e.g., a lighter shade for backgrounds using \`hsla(var(--accent-color) / 0.1)\`, a darker shade for text on colored backgrounds). This is crucial for professional theming.
-        *   **Buttery-Smooth Micro-interactions:** Every interaction must feel responsive and fluid. Use subtle, non-jarring CSS transitions (\`transition-all duration-300 ease-in-out\`). Elements should have a subtle 'lift' or 'glow' on hover/focus (e.g., \`hover:scale-[1.02]\` on cards, focus rings on inputs).
-        *   **Delightful Animations:** The entire component should gracefully animate on load (e.g., a staggered fade-in and slide-up effect for elements). Results or new UI elements should appear with subtle animations, not just pop in.
-        *   **Pixel-Perfect Responsive Design:** The tool MUST be impeccably responsive. It must look and function perfectly on a 320px mobile screen up to a 4K desktop monitor. Use responsive Tailwind classes (\`sm:\`, \`md:\`, etc.) intelligently to reflow content beautifully.
-        *   **Pristine Typography & Layout:** Use modern layouts (Flexbox/Grid) for perfect alignment and generous spacing. Employ a clear typographic hierarchy. All text must be highly readable in both light and dark mode.
-        *   **Clarity with Icons:** Embed inline SVG icons where they add value and clarity (e.g., copy icon, info icon for tooltips).
+    **Technical Implementation Mandates:**
 
-    3.  **World-Class Engineering & Technical Standards:**
-        *   **HTML Snippet ONLY:** The output MUST be a single, raw HTML snippet. Do NOT include \`<!DOCTYPE html>\`, \`<html>\`, \`<body>\`, or \`<head>\` tags.
-        *   **Root Element Identifier:** The root element of your generated snippet MUST have the attribute \`data-wp-seo-optimizer-tool="true"\`. This is non-negotiable for the app to function.
-        *   **Fully Self-Contained:** All CSS and JavaScript MUST be embedded directly within \`<style>\` and \`<script>\` tags inside the main container. No external files allowed, except for the mandatory Tailwind CSS CDN.
-        *   **Tailwind CSS CDN:** The very first line of your snippet MUST be: \`<script src="https://cdn.tailwindcss.com"></script>\`. Use Tailwind's JIT features and \`dark:\` variants extensively for a perfect dark mode experience.
-        *   **Accessibility (WCAG AA) is Paramount:** The tool must be fully accessible. Use semantic HTML, ARIA attributes (\`aria-live\` for dynamic results), \`aria-label\` for icon-only buttons, proper focus management, and ensure full keyboard navigability.
-        *   **Clean, Commented Code:** The JavaScript code must be immaculate, readable, and well-commented to explain the logic.
-        *   **Live Theming Script (Crucial):** Inside your \`<script>\` tag, you MUST include this exact JavaScript code block for the live preview to work.
-            \`\`\`javascript
-            // --- Live Theme Update Listener ---
-            function hexToHsl(hex) {
-              let r = 0, g = 0, b = 0;
-              if (hex.length == 4) {
-                r = parseInt(hex[1] + hex[1], 16);
-                g = parseInt(hex[2] + hex[2], 16);
-                b = parseInt(hex[3] + hex[3], 16);
-              } else if (hex.length == 7) {
-                r = parseInt(hex[1] + hex[2], 16);
-                g = parseInt(hex[3] + hex[4], 16);
-                b = parseInt(hex[5] + hex[6], 16);
-              }
-              r /= 255; g /= 255; b /= 255;
-              const max = Math.max(r, g, b), min = Math.min(r, g, b);
-              let h = 0, s = 0, l = (max + min) / 2;
-              if (max !== min) {
-                const d = max - min;
-                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-                switch (max) {
-                  case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                  case g: h = (b - r) / d + 2; break;
-                  case b: h = (r - g) / d + 4; break;
-                }
-                h /= 6;
-              }
-              return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
-            }
+    1.  **NO WRAPPERS:** Your response MUST be the raw HTML snippet itself. Do NOT include \`\`\`html\`, \`<html>\`, \`<head>\`, or \`<body>\`.
+    
+    2.  **SCRIPT & STYLE ORDER:** The very first elements in your response, in this exact order, must be:
+        *   A. The Tailwind CSS script: \`<script src="https://cdn.tailwindcss.com"></script>\`
+        *   B. A single \`<style>\` block.
 
-            window.addEventListener('message', (event) => {
-              if (event.data.type === 'UPDATE_THEME' && event.data.color) {
-                const hsl = hexToHsl(event.data.color);
-                document.documentElement.style.setProperty('--accent-color', \`\${hsl.h} \${hsl.s}% \${hsl.l}%\`);
-              }
-            });
-            // --- End Live Theme Update Listener ---
-            \`\`\`
+    3.  **STYLE BLOCK CONTENT:** The \`<style>\` block MUST contain:
+        *   A \`:host\` rule to ensure proper block layout: \`:host { display: block; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }\`
+        *   CSS variables for theming. Define them inside the main container class (\`.tool-container\`). The primary accent color MUST be defined as \`--accent-color: ${themeHslString};\`. You may define other variables if needed (e.g., for background colors).
+        *   Use the accent color variable like this in Tailwind classes: \`bg-[hsl(var(--accent-color))]\`, \`text-[hsl(var(--accent-color))]\`, \`ring-[hsl(var(--accent-color))]\`.
 
-    4.  **Strict Output Format:**
-        *   Your entire response MUST consist ONLY of the raw HTML code for the snippet.
-        *   Do NOT include any explanations, introductory text, or markdown fences (like \`\`\`html\`) before or after the code.
+    4.  **HTML STRUCTURE:**
+        *   The root element of your tool must have the class \`tool-container\` and should be a \`div\` or \`section\`.
+        *   The entire tool must be contained within this single snippet.
 
-    Execute. Create the definitive, world-class version of this tool. Your response must be nothing but the raw HTML code.
+    5.  **JAVASCRIPT:**
+        *   All necessary JavaScript MUST be contained within a single \`<script>\` tag placed at the very end of the HTML snippet.
+        *   The script should be modern, efficient, well-commented, and bug-free.
+        *   Add event listeners inside the script; do not use inline \`onclick\` attributes.
+
+    Now, generate the complete, premium HTML snippet for the "${idea.title}" tool.
     `;
 };
 
 // --- INSERTION POINT ---
-const getInsertionIndexPrompt = (paragraphs: string[], htmlSnippet: string): string => {
+const getInsertionIndexPrompt = (contentBlocks: string[], htmlSnippet: string): string => {
     const cleanSnippet = stripHtml(htmlSnippet).substring(0, 300);
-    const paragraphList = paragraphs
-        .map((p, index) => `${index + 1}. ${stripHtml(p).substring(0, 80)}...`)
+    const blockList = contentBlocks
+        .map((block, index) => `${index + 1}. ${block}`)
         .join('\n');
 
     return `
-    Analyze the following list of paragraphs from a blog post. I need to insert an interactive HTML tool into the most contextually relevant and engaging location.
+    You are an expert UX designer and content strategist. Your task is to find the perfect placement for an interactive HTML tool within a blog post to maximize user engagement and contextual relevance.
 
-    **Paragraph List:**
-    ${paragraphList}
+    Below is a simplified structure of the blog post, represented by a numbered list of its main content blocks (paragraphs, headings, lists, etc.).
 
-    **Tool to Insert (for context):**
-    A tool with the title: "${cleanSnippet}"
+    **Blog Post Structure:**
+    ${blockList}
 
-    **Your Task:**
-    Respond with ONLY the number of the paragraph AFTER which the tool should be inserted. For example, if the tool should go after paragraph 3, your response must be only "3". Do not add any explanation, punctuation, or extra text. If it's best at the end, respond with the last number.
+    **Tool to Insert:**
+    An interactive tool related to: "${cleanSnippet}"
 
-    Your response must be a single number.
+    **Your Goal:**
+    Analyze the flow and content of the blog post structure. Determine the single best location to insert the tool. A perfect location is one that is:
+    1.  **Contextually Relevant:** The tool should appear right after the content it relates to is discussed.
+    2.  **Engaging, Not Disruptive:** It should feel like a natural part of the content, not an interruption. Placing it after a section introduction or summary is often effective.
+    3.  **Visually Balanced:** Avoid placing it between a heading and its first paragraph, or in the middle of a very short list. Placing it between two substantial paragraphs is a safe and effective choice.
+
+    **Your Response:**
+    You must respond with ONLY the number of the content block AFTER which the tool should be inserted. For example, if the best spot is after block number 3, your response must be only "3". Do not add any explanation, punctuation, or extra text. If the very end of the post is the most logical place, respond with the last number (${contentBlocks.length}).
+
+    Your response must be a single integer.
     `;
 };
 
 export async function insertSnippetIntoContent(state: AppState, postContent: string, htmlSnippet: string): Promise<string> {
-    if (typeof document === 'undefined') {
-        // Fallback for non-browser environments, though this app runs in-browser
-        return `${postContent}\n\n${htmlSnippet}`;
-    }
-
     const doc = new DOMParser().parseFromString(postContent, 'text/html');
-    const paragraphs = Array.from(doc.body.querySelectorAll('p'));
+    const contentBlocks = Array.from(doc.body.querySelectorAll('p, h2, h3, h4, ul, ol, blockquote'));
 
-    if (paragraphs.length < 2) {
-        // Not enough content to make an intelligent decision, append at the end
-        return `${postContent}\n\n${htmlSnippet}`;
-    }
+    let insertionIndex;
+    if (contentBlocks.length < 2) {
+        insertionIndex = contentBlocks.length - 1; // Append at the end if post is short
+    } else {
+        const blockRepresentations = contentBlocks.map(el => {
+            const tagName = el.tagName.toLowerCase();
+            const text = stripHtml(el.outerHTML).substring(0, 250);
+            return `[${tagName}] ${text}...`;
+        });
 
-    const paragraphHTMLs = paragraphs.map(p => p.outerHTML);
-    const prompt = getInsertionIndexPrompt(paragraphHTMLs, htmlSnippet);
-    
-    let insertionIndex = -1;
+        const prompt = getInsertionIndexPrompt(blockRepresentations, htmlSnippet);
+        insertionIndex = -1;
 
-    try {
-        let responseText: string;
-        if (state.selectedProvider === AiProvider.Gemini) {
-            const ai = new GoogleGenAI({ apiKey: state.apiKeys.gemini });
-             const response = await ai.models.generateContent({
-                model: AI_PROVIDERS.gemini.defaultModel,
-                contents: prompt,
-            });
-            responseText = response.text.trim();
-        } else {
-            responseText = await callGenericChatApi(state, prompt, false);
+        try {
+            let responseText: string;
+            if (state.selectedProvider === AiProvider.Gemini) {
+                const ai = new GoogleGenAI({ apiKey: state.apiKeys.gemini });
+                const response = await ai.models.generateContent({
+                    model: AI_PROVIDERS.gemini.defaultModel,
+                    contents: prompt,
+                });
+                responseText = response.text.trim();
+            } else {
+                responseText = await callGenericChatApi(state, prompt, false);
+            }
+
+            const chosenNumber = parseInt(responseText.replace(/\D/g, ''), 10);
+            if (!isNaN(chosenNumber) && chosenNumber > 0 && chosenNumber <= contentBlocks.length) {
+                insertionIndex = chosenNumber - 1; // 0-indexed
+            }
+        } catch (error) {
+            console.error("AI API error in insertSnippetIntoContent:", error);
         }
 
-        const chosenNumber = parseInt(responseText.replace(/\D/g, ''), 10);
-        
-        // Validate the number
-        if (!isNaN(chosenNumber) && chosenNumber > 0 && chosenNumber <= paragraphs.length) {
-            insertionIndex = chosenNumber - 1; // 0-indexed
+        if (insertionIndex === -1) {
+            insertionIndex = Math.floor(contentBlocks.length / 2); // Default fallback
         }
-    } catch (error) {
-        console.error("AI API error in insertSnippetIntoContent:", error);
-        // Fallback on error, handled below
-    }
-
-    if (insertionIndex === -1) {
-        // Fallback if AI fails or returns invalid data: insert after the middle paragraph.
-        insertionIndex = Math.floor(paragraphs.length / 2);
     }
     
-    const targetParagraph = paragraphs[insertionIndex];
-    
-    // Create a temporary container for the snippet to parse it into a DOM node
-    // Using a template tag is safer for parsing arbitrary HTML
+    const finalSnippet = createWebComponentWrapper(htmlSnippet);
     const template = document.createElement('template');
-    template.innerHTML = htmlSnippet.trim();
+    template.innerHTML = finalSnippet.trim();
     
     if (template.content.firstChild) {
-        targetParagraph.after(template.content.firstChild);
+         if (insertionIndex >= 0 && contentBlocks[insertionIndex]) {
+            contentBlocks[insertionIndex].after(template.content);
+        } else {
+            // If no suitable insertion point, append to the body
+            doc.body.appendChild(template.content);
+        }
     }
 
-    // Serialize the updated body content back to a string
     return doc.body.innerHTML;
 }
 
+
+function createWebComponentWrapper(shadowDomHtml: string): string {
+    const uniqueId = `tool-embed-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    // Escape backticks and backslashes for JS template literal
+    const escapedHtml = shadowDomHtml.replace(/\\/g, '\\\\').replace(/`/g, '\\`');
+
+    const script = `
+        <script>
+            (function() {
+                if (customElements.get('${uniqueId}')) return;
+                const template = document.createElement('template');
+                template.innerHTML = \`${escapedHtml}\`;
+                customElements.define('${uniqueId}', class extends HTMLElement {
+                    constructor() {
+                        super();
+                        this.attachShadow({ mode: 'open' });
+                        this.shadowRoot.appendChild(template.content.cloneNode(true));
+                    }
+                });
+            })();
+        </script>
+    `;
+
+    return `
+        <div data-wp-seo-optimizer-tool="true" style="margin: 2.5em 0; clear: both;">
+            <${uniqueId}></${uniqueId}>
+            ${script}
+        </div>
+    `;
+}
 
 // --- GENERIC API HANDLER for OpenAI, Anthropic, OpenRouter ---
 async function callGenericChatApi(state: AppState, prompt: string, isJsonMode: boolean): Promise<string> {
