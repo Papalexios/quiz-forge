@@ -55,11 +55,14 @@ export interface ToolIdea {
   icon: string; // e.g., "calculator", "chart", "list"
 }
 
+export type Theme = 'light' | 'dark';
+
 export interface AppState {
   currentStep: Step;
   status: Status; // For general app status like fetching posts/generating snippets
   error: string | null;
   deletingPostId: number | null;
+  theme: Theme;
   
   // AI Provider State
   apiKeys: ApiKeys;

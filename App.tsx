@@ -7,6 +7,7 @@ import Step3Generate from './components/Step3_Generate';
 import { useAppContext } from './context/AppContext';
 import { Button } from './components/common/Button';
 import { SparklesIcon } from './components/icons/SparklesIcon';
+import ThemeToggle from './components/ThemeToggle';
 
 export default function App(): React.ReactNode {
   const { state, reset } = useAppContext();
@@ -25,7 +26,7 @@ export default function App(): React.ReactNode {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-sans antialiased">
+    <div className="min-h-screen text-slate-800 dark:text-slate-200 font-sans antialiased">
       <div className="container mx-auto px-4 py-6 sm:py-12">
         <header className="flex flex-col sm:flex-row justify-between items-center mb-8 sm:mb-12 gap-4">
           <div className="flex items-center gap-3 sm:gap-4">
@@ -39,9 +40,12 @@ export default function App(): React.ReactNode {
               </p>
             </div>
           </div>
-          {state.currentStep !== Step.Configure && (
-             <Button onClick={reset} variant="secondary">Start Over</Button>
-          )}
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            {state.currentStep !== Step.Configure && (
+               <Button onClick={reset} variant="secondary">Start Over</Button>
+            )}
+          </div>
         </header>
         
         <main className="max-w-5xl mx-auto">

@@ -1,6 +1,5 @@
-
 import React, { createContext, useReducer, useContext, useCallback, useMemo, useEffect } from 'react';
-import { AppState, Step, WordPressConfig, WordPressPost, ToolIdea, AiProvider, ApiKeys, ApiValidationStatuses, ApiValidationStatus } from '../types';
+import { AppState, Step, WordPressConfig, WordPressPost, ToolIdea, AiProvider, ApiKeys, ApiValidationStatuses, ApiValidationStatus, Theme } from '../types';
 import { fetchPosts, updatePost } from '../services/wordpressService';
 import { validateApiKey, suggestToolIdeas, insertSnippetIntoContent, generateHtmlSnippetStream } from '../services/aiService';
 
@@ -24,21 +23,32 @@ type Action =
   | { type: 'SET_PROVIDER', payload: AiProvider }
   | { type: 'SET_API_KEY', payload: { provider: AiProvider, key: string } }
   | { type: 'SET_OPENROUTER_MODEL', payload: string }
-  | { type: 'SET_VALIDATION_STATUS', payload: { provider: AiProvider, status: ApiValidationStatus } };
+  | { type: 'SET_VALIDATION_STATUS', payload: { provider: AiProvider, status: ApiValidationStatus } }
+  | { type: 'SET_THEME'; payload: Theme };
 
 
 const WP_CONFIG_KEY = 'wp_config';
 const WP_POSTS_KEY = 'wp_posts';
 const AI_CONFIG_KEY = 'ai_config';
+const THEME_KEY = 'app_theme';
 
 const initialApiKeys: ApiKeys = { gemini: '', openai: '', anthropic: '', openrouter: '' };
 const initialValidationStatuses: ApiValidationStatuses = { gemini: 'idle', openai: 'idle', anthropic: 'idle', openrouter: 'idle' };
+
+const getInitialTheme = (): Theme => {
+    if (typeof window === 'undefined') return 'light';
+    const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
+    if (storedTheme) return storedTheme;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
 
 const initialState: AppState = {
   currentStep: Step.Configure,
   status: 'idle',
   error: null,
   deletingPostId: null,
+  theme: getInitialTheme(),
   // AI State
   apiKeys: initialApiKeys,
   apiValidationStatuses: initialValidationStatuses,
@@ -62,8 +72,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'RESET':
       sessionStorage.removeItem(WP_POSTS_KEY);
       sessionStorage.removeItem(WP_CONFIG_KEY);
-      // Keep API keys on reset
-      return { ...initialState, apiKeys: state.apiKeys, apiValidationStatuses: state.apiValidationStatuses, selectedProvider: state.selectedProvider, openRouterModel: state.openRouterModel };
+      // Keep API keys and theme on reset
+      return { ...initialState, apiKeys: state.apiKeys, apiValidationStatuses: state.apiValidationStatuses, selectedProvider: state.selectedProvider, openRouterModel: state.openRouterModel, theme: state.theme };
     case 'RESET_TO_ANALYZE':
       return {
         ...state,
@@ -138,6 +148,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
         return { ...state, openRouterModel: action.payload };
     case 'SET_VALIDATION_STATUS':
         return { ...state, apiValidationStatuses: { ...state.apiValidationStatuses, [action.payload.provider]: action.payload.status }};
+    case 'SET_THEME':
+        return { ...state, theme: action.payload };
     default:
       return state;
   }
@@ -159,6 +171,7 @@ const AppContext = createContext<{
   setApiKey: (provider: AiProvider, key: string) => void;
   setOpenRouterModel: (model: string) => void;
   validateAndSaveApiKey: (provider: AiProvider) => Promise<void>;
+  setTheme: (theme: Theme) => void;
 } | null>(null);
 
 export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -189,13 +202,22 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           apiKeys: { ...initialApiKeys, ...aiConfig.apiKeys },
           selectedProvider: aiConfig.selectedProvider || AiProvider.Gemini,
           openRouterModel: aiConfig.openRouterModel || '',
+          theme: getInitialTheme(),
         };
     } catch (e) {
       console.error("Failed to load state from storage", e);
     }
-    return init;
+    return { ...init, theme: getInitialTheme() };
   });
   
+  // Effect to apply theme class to the root element
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(state.theme);
+    localStorage.setItem(THEME_KEY, state.theme);
+  }, [state.theme]);
+
   const reset = useCallback(() => dispatch({ type: 'RESET' }), []);
   const resetToAnalyze = useCallback(() => dispatch({ type: 'RESET_TO_ANALYZE' }), []);
 
@@ -356,6 +378,10 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [state.apiKeys, state.openRouterModel, saveAiConfigToLocalStorage]);
   
+  const setTheme = useCallback((theme: Theme) => {
+    dispatch({ type: 'SET_THEME', payload: theme });
+  }, []);
+  
   // Effect to save AI configuration to localStorage whenever it changes
   useEffect(() => {
     saveAiConfigToLocalStorage();
@@ -378,6 +404,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setApiKey,
     setOpenRouterModel,
     validateAndSaveApiKey,
+    setTheme,
   }), [
     state, 
     connectToWordPress, 
@@ -393,7 +420,8 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setProvider,
     setApiKey,
     setOpenRouterModel,
-    validateAndSaveApiKey
+    validateAndSaveApiKey,
+    setTheme
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
