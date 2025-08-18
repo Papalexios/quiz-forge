@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, ToolIdea, AiProvider } from '../types';
 import { AI_PROVIDERS } from "../constants";
@@ -190,48 +189,50 @@ const getHtmlGenerationPrompt = (postTitle: string, postContent: string, idea: T
     const cleanContent = stripHtml(postContent).substring(0, 4000);
     const themeHsl = hexToHsl(themeColor);
     const themeHslString = `${themeHsl.h} ${themeHsl.s}% ${themeHsl.l}%`;
-    
-    return `
-    **Persona:** You are a world-class senior front-end engineer and UI/UX designer from a top-tier digital agency. Your work is known for being modern, beautiful, highly interactive, and featured on sites like Awwwards. You are an expert in creating premium, self-contained web components using Tailwind CSS.
+    const themeHslHoverString = `${themeHsl.h} ${themeHsl.s}% ${Math.max(0, themeHsl.l - 8)}%`; // Darker for hover
 
-    **Mission:** Generate a single, complete, self-contained HTML snippet for an interactive tool. This snippet will be injected directly into a Shadow DOM. The final output must be **ONLY the raw HTML code** and nothing else.
+    return `
+    **Persona:** You are a world-class senior front-end engineer and UI/UX designer. Your portfolio is filled with award-winning, pixel-perfect interactive web components that are both beautiful and flawlessly functional. You are a master of modern design trends, Tailwind CSS, and vanilla JavaScript.
+
+    **Mission:** Generate a single, complete, self-contained, production-ready HTML snippet for an interactive tool. This snippet will be injected directly into a Shadow DOM. The final output must be **ONLY the raw HTML code** and nothing else.
 
     **Tool Request:**
     *   **Blog Post Title:** "${postTitle}"
     *   **Tool Idea:** "${idea.title}"
     *   **Description:** "${idea.description}"
-    *   **Content Context:** "${cleanContent}"
+    *   **Content Context (for data and relevance):** "${cleanContent}"
     *   **Primary Accent Color (HSL):** ${themeHslString}
 
-    **Design & UX Principles (Follow these strictly):**
-    1.  **Aesthetic:** Modern, premium, and clean. Use generous spacing, soft shadows (e.g., \`shadow-lg\`, \`shadow-xl\`), rounded corners (\`rounded-xl\`, \`rounded-2xl\`), and subtle gradients where appropriate. The UI should feel polished and high-quality.
-    2.  **Interactivity:** The tool must be highly interactive and provide immediate feedback. Use subtle transitions and animations (\`transition-all\`, \`duration-300\`) on hover/focus states to make the UI feel alive.
-    3.  **Typography:** Use a clean, readable font stack. Ensure clear visual hierarchy with varying font sizes and weights (e.g., \`text-lg\`, \`font-bold\`, \`text-slate-500\`).
-    4.  **Dark Mode:** Dark mode is a first-class citizen. Every element MUST be perfectly styled for both light and dark modes using Tailwind's \`dark:\` variants. The dark theme should be sleek and elegant.
-    5.  **Responsiveness:** The layout must be fully responsive and look excellent on all screen sizes, from mobile to desktop.
-    6.  **Accessibility:** Adhere to WCAG AA standards. Use semantic HTML, ARIA attributes where necessary, and ensure all interactive elements are keyboard-navigable and have clear focus states (e.g., \`focus:ring-2\`).
+    **Core Principles (Non-negotiable):**
+    1.  **Aesthetic Excellence:** The design must be modern, premium, and clean. Use generous spacing, soft shadows (\`shadow-lg\`), and elegant rounded corners (\`rounded-2xl\`). Use subtle background gradients (e.g., \`bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900\`) to add depth.
+    2.  **Delightful Interactivity:** The tool must feel alive. Use smooth transitions (\`transition-all\`, \`duration-300\`) for all state changes (hover, focus, selection). Animate data updates; for example, make numbers count up or charts animate in. Incorporate simple, clean SVG icons for clarity in buttons or key areas.
+    3.  **Flawless Dark Mode:** Dark mode is critical. Every element MUST be perfectly styled for both light and dark modes using Tailwind's \`dark:\` variants. The dark theme should be sophisticated and easy on the eyes.
+    4.  **Bulletproof Responsiveness:** The layout must be fully responsive, from a 320px mobile screen to a 4K desktop. Use flexbox or grid layouts effectively.
+    5.  **Rock-Solid Accessibility (WCAG AA):** Use semantic HTML, ARIA attributes where needed (\`aria-live\` for dynamic regions), and ensure all interactive elements have highly visible focus states (e.g., \`focus:ring-2 focus:ring-offset-2\`).
 
-    **Technical Implementation Mandates:**
+    **Technical Mandates (Strictly Enforced):**
 
-    1.  **NO WRAPPERS:** Your response MUST be the raw HTML snippet itself. Do NOT include \`\`\`html\`, \`<html>\`, \`<head>\`, or \`<body>\`.
+    1.  **RAW HTML ONLY:** Your response MUST start with \`<script src="https://cdn.tailwindcss.com"></script>\` and end with the closing \`</script>\` tag of your logic. Do NOT include Markdown fences (\`\`\`html\`), \`<html>\`, \`<head>\`, or \`<body>\` tags.
     
-    2.  **SCRIPT & STYLE ORDER:** The very first elements in your response, in this exact order, must be:
-        *   A. The Tailwind CSS script: \`<script src="https://cdn.tailwindcss.com"></script>\`
-        *   B. A single \`<style>\` block.
+    2.  **STRUCTURE & STYLING:**
+        *   The snippet must start with the Tailwind CDN script, immediately followed by a single \`<style>\` block.
+        *   The \`<style>\` block must contain a \`:host { display: block; }\` rule.
+        *   Inside the main container class (\`.tool-container\`), define CSS variables for theming:
+            \`--accent-color: ${themeHslString};\`
+            \`--accent-color-hover: ${themeHslHoverString};\`
+            And use them in Tailwind classes: \`bg-[hsl(var(--accent-color))] hover:bg-[hsl(var(--accent-color-hover))]\`.
 
-    3.  **STYLE BLOCK CONTENT:** The \`<style>\` block MUST contain:
-        *   A \`:host\` rule to ensure proper block layout: \`:host { display: block; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }\`
-        *   CSS variables for theming. Define them inside the main container class (\`.tool-container\`). The primary accent color MUST be defined as \`--accent-color: ${themeHslString};\`. You may define other variables if needed (e.g., for background colors).
-        *   Use the accent color variable like this in Tailwind classes: \`bg-[hsl(var(--accent-color))]\`, \`text-[hsl(var(--accent-color))]\`, \`ring-[hsl(var(--accent-color))]\`.
+    3.  **HTML:**
+        *   The root element must have the class \`tool-container\`.
+        *   Structure your HTML logically and semantically.
 
-    4.  **HTML STRUCTURE:**
-        *   The root element of your tool must have the class \`tool-container\` and should be a \`div\` or \`section\`.
-        *   The entire tool must be contained within this single snippet.
-
-    5.  **JAVASCRIPT:**
-        *   All necessary JavaScript MUST be contained within a single \`<script>\` tag placed at the very end of the HTML snippet.
-        *   The script should be modern, efficient, well-commented, and bug-free.
-        *   Add event listeners inside the script; do not use inline \`onclick\` attributes.
+    4.  **JAVASCRIPT:**
+        *   Place all logic in a single \`<script>\` tag at the very end of the snippet.
+        *   Write clean, modern, and robust vanilla JavaScript.
+        *   **No inline event handlers** (e.g., \`onclick\`). Use \`addEventListener\`.
+        *   Structure your code with clear functions. For complex tools, use a simple state object and functions that update the UI based on state changes.
+        *   **Handle all edge cases.** Sanitize inputs, prevent errors like division by zero, and provide clear user feedback for invalid actions.
+        *   Add concise comments to explain complex logic.
 
     Now, generate the complete, premium HTML snippet for the "${idea.title}" tool.
     `;
