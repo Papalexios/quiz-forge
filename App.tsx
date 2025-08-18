@@ -48,6 +48,17 @@ export default function App(): React.ReactNode {
           </div>
         </header>
         
+        {state.currentStep === Step.Configure && (
+          <div className="text-center my-8 animate-fade-in">
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
+              The Sizzle That Sets Your Blog Apart.
+            </h2>
+            <p className="mt-4 max-w-3xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-slate-400">
+              Instantly embed AI-generated interactive tools to captivate readers and dominate search rankings. Go from static text to an interactive experience in <span className="font-bold text-slate-800 dark:text-slate-200">minutes</span>, not days.
+            </p>
+          </div>
+        )}
+
         <main className="max-w-5xl mx-auto">
           <Stepper currentStep={state.currentStep} />
           <div className="mt-8 bg-white/70 dark:bg-slate-800/50 rounded-2xl shadow-2xl shadow-slate-200/50 dark:shadow-black/20 p-4 sm:p-10 border border-slate-200/80 dark:border-slate-700/60 backdrop-blur-xl min-h-[calc(100vh-240px)] sm:min-h-[500px]">
