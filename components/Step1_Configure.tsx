@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Button } from './common/Button';
 import { Spinner } from './common/Spinner';
@@ -8,6 +7,28 @@ import { WorldIcon, UserIcon, LockIcon } from './icons/FormIcons';
 import { useAppContext } from '../context/AppContext';
 import { Step, AiProvider } from '../types';
 import ApiConfiguration from './ApiConfiguration';
+import { Card } from './common/Card';
+import { ArrowRightIcon } from './icons/ArrowRightIcon';
+
+const ResourceLink: React.FC<{ title: string; url: string }> = ({ title, url }) => (
+  <a href={url} target="_blank" rel="noopener noreferrer" className="block text-left no-underline group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 rounded-xl">
+    <Card className="h-full !p-4 group-hover:shadow-xl group-hover:border-blue-500 dark:group-hover:border-blue-500 transition-all duration-300">
+      <div className="flex justify-between items-center gap-4">
+        <h4 className="font-bold text-slate-800 dark:text-slate-100">{title}</h4>
+        <ArrowRightIcon className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-blue-500 transition-colors flex-shrink-0" />
+      </div>
+    </Card>
+  </a>
+);
+
+const resources = [
+  { title: "Beginner's Guide to Affiliate Marketing", url: "https://affiliatemarketingforsuccess.com/affiliate-marketing/beginners-guide-to-affiliate-marketing/" },
+  { title: "Create a Winning Content Strategy", url: "https://affiliatemarketingforsuccess.com/blogging/winning-content-strategy/" },
+  { title: "A Complete Guide to SEO Writing", url: "https://affiliatemarketingforsuccess.com/seo/seo-writing-a-complete-guide-to-seo-writing/" },
+  { title: "The Future of SEO with AI", url: "https://affiliatemarketingforsuccess.com/ai/ai-future-of-seo/" },
+  { title: "How to Choose Your Web Host", url: "https://affiliatemarketingforsuccess.com/how-to-start/how-to-choose-a-web-host/" },
+  { title: "Monetize Your Blog: Proven Strategies", url: "https://affiliatemarketingforsuccess.com/blogging/monetize-your-blog-proven-strategies/" }
+];
 
 export default function Step1Configure(): React.ReactNode {
   const { state, connectToWordPress } = useAppContext();
@@ -122,6 +143,22 @@ export default function Step1Configure(): React.ReactNode {
             )}
           </div>
         </form>
+      </section>
+
+      <section className="mt-12 border-t border-slate-200 dark:border-slate-700 pt-8">
+        <div className="text-center">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">
+            Resources & Learning Hub
+          </h2>
+          <p className="mt-2 text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+            Supercharge your content strategy with insights from our blog on affiliate marketing, SEO, and AI content creation.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-8 max-w-5xl mx-auto">
+          {resources.map((resource) => (
+            <ResourceLink key={resource.url} title={resource.title} url={resource.url} />
+          ))}
+        </div>
       </section>
     </div>
   );

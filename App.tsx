@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Step } from './types';
 import Stepper from './components/Stepper';
@@ -35,8 +34,8 @@ export default function App(): React.ReactNode {
               <h1 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-400 dark:to-purple-500">
                 ContentForge AI
               </h1>
-              <p className="text-md text-slate-600 dark:text-slate-400 hidden sm:block">
-                Forge AI-powered interactive tools for your content.
+              <p className="text-md text-slate-600 dark:text-slate-400">
+                From the creators of <a href="https://affiliatemarketingforsuccess.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">AffiliateMarketingForSuccess.com</a>
               </p>
             </div>
           </div>
@@ -51,6 +50,19 @@ export default function App(): React.ReactNode {
             {renderStepContent()}
           </div>
         </main>
+
+        <footer className="text-center mt-8 sm:mt-12 py-6 border-t border-slate-200 dark:border-slate-800">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            © {new Date().getFullYear()} ContentForge AI by <a href="https://affiliatemarketingforsuccess.com" target="_blank" rel="noopener noreferrer" className="hover:underline">AffiliateMarketingForSuccess.com</a>
+          </p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 space-x-2">
+            <a href="https://affiliatemarketingforsuccess.com/blog/" target="_blank" rel="noopener noreferrer" className="hover:underline">Blog</a>
+            <span>&bull;</span>
+            <a href="https://affiliatemarketingforsuccess.com/affiliate-marketing/beginners-guide-to-affiliate-marketing/" target="_blank" rel="noopener noreferrer" className="hover:underline">Learn Affiliate Marketing</a>
+            <span>&bull;</span>
+            <a href="https://affiliatemarketingforsuccess.com/ai/ai-future-of-seo/" target="_blank" rel="noopener noreferrer" className="hover:underline">AI for SEO</a>
+          </p>
+        </footer>
       </div>
     </div>
   );
