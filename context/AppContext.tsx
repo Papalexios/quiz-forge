@@ -1,13 +1,15 @@
 import React, { createContext, useReducer, useContext, useCallback, useMemo, useEffect } from 'react';
 import { AppState, Step, WordPressConfig, WordPressPost, ToolIdea, AiProvider, ApiKeys, ApiValidationStatuses, ApiValidationStatus, Theme } from '../types';
-import { fetchPosts, updatePost } from '../services/wordpressService';
-import { validateApiKey, suggestToolIdeas, insertSnippetIntoContent, generateHtmlSnippetStream } from '../services/aiService';
+import { fetchPosts, updatePost, checkSetup, createCfTool, deleteCfTool } from '../services/wordpressService';
+import { validateApiKey, suggestToolIdeas, insertShortcodeIntoContent, generateHtmlSnippetStream } from '../services/aiService';
+import { SHORTCODE_DETECTION_REGEX, SHORTCODE_REMOVAL_REGEX } from '../constants';
 
 type Action =
   | { type: 'RESET' }
   | { type: 'RESET_TO_ANALYZE' }
   | { type: 'START_LOADING'; payload?: 'ideas' | 'snippet' | 'insert' }
   | { type: 'SET_ERROR'; payload: string }
+  | { type: 'SET_SETUP_REQUIRED'; payload: boolean }
   | { type: 'CONFIGURE_SUCCESS'; payload: { config: WordPressConfig; posts: WordPressPost[] } }
   | { type: 'SELECT_POST'; payload: WordPressPost }
   | { type: 'GET_IDEAS_SUCCESS'; payload: ToolIdea[] }
@@ -60,6 +62,7 @@ const initialState: AppState = {
   filteredPosts: [],
   postSearchQuery: '',
   selectedPost: null,
+  setupRequired: false,
   // Generation State
   toolIdeas: [],
   selectedIdea: null,
@@ -87,9 +90,11 @@ const appReducer = (state: AppState, action: Action): AppState => {
         generatedSnippet: '',
       };
     case 'START_LOADING':
-      return { ...state, status: 'loading', error: null };
+      return { ...state, status: 'loading', error: null, setupRequired: false };
     case 'SET_ERROR':
       return { ...state, status: 'error', error: action.payload, deletingPostId: null };
+    case 'SET_SETUP_REQUIRED':
+      return { ...state, status: 'error', setupRequired: action.payload };
     case 'CONFIGURE_SUCCESS':
       return {
         ...state,
@@ -98,6 +103,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
         wpConfig: action.payload.config,
         posts: action.payload.posts,
         filteredPosts: action.payload.posts,
+        setupRequired: false,
       };
     case 'SELECT_POST':
       return { ...state, selectedPost: action.payload, toolIdeas: [], generatedSnippet: '' };
@@ -163,7 +169,7 @@ const AppContext = createContext<{
   setThemeColor: (color: string) => void;
   generateSnippet: () => Promise<void>;
   insertSnippet: () => Promise<void>;
-  deleteSnippet: (postId: number) => Promise<void>;
+  deleteSnippet: (postId: number, toolId?: number) => Promise<void>;
   setPostSearchQuery: (query: string) => void;
   reset: () => void;
   resetToAnalyze: () => void;
@@ -224,6 +230,16 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const connectToWordPress = useCallback(async (config: WordPressConfig) => {
     dispatch({ type: 'START_LOADING' });
     try {
+      // First, check for setup readiness.
+      const isSetup = await checkSetup(config);
+      if (!isSetup) {
+        dispatch({ type: 'SET_SETUP_REQUIRED', payload: true });
+        dispatch({ type: 'SET_ERROR', payload: 'A one-time setup is required.' });
+        // Store config so retry can use it
+        sessionStorage.setItem(WP_CONFIG_KEY, JSON.stringify(config)); 
+        return;
+      }
+
       const posts = await fetchPosts(config);
       if (posts.length === 0) {
         dispatch({ type: 'SET_ERROR', payload: 'Connected successfully, but no posts were found.' });
@@ -268,12 +284,22 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [state]);
 
   const insertSnippet = useCallback(async () => {
-    if (!state.wpConfig || !state.selectedPost || !state.generatedSnippet) return;
+    if (!state.wpConfig || !state.selectedPost || !state.generatedSnippet || !state.selectedIdea) return;
     dispatch({ type: 'START_LOADING' });
     try {
-      const newContent = await insertSnippetIntoContent(state, state.selectedPost.content.rendered, state.generatedSnippet);
+      // 1. Create the tool as a custom post, which returns the new tool's ID.
+      const { id: newToolId } = await createCfTool(state.wpConfig, state.selectedIdea.title, state.generatedSnippet);
+      
+      // 2. Create the shortcode string.
+      const shortcode = `[contentforge_tool id="${newToolId}"]`;
+
+      // 3. Intelligently insert the shortcode into the main post's content.
+      const newContent = await insertShortcodeIntoContent(state, state.selectedPost.content.rendered, shortcode);
+      
+      // 4. Update the main post.
       await updatePost(state.wpConfig, state.selectedPost.id, newContent);
       
+      // 5. Fetch all posts again to refresh the entire UI state.
       const newPosts = await fetchPosts(state.wpConfig);
       const updatedPost = newPosts.find(p => p.id === state.selectedPost!.id)!;
 
@@ -283,7 +309,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [state]);
 
-  const deleteSnippet = useCallback(async (postId: number) => {
+  const deleteSnippet = useCallback(async (postId: number, toolId?: number) => {
     if (!state.wpConfig) return;
     
     const postToDeleteFrom = state.posts.find(p => p.id === postId);
@@ -292,44 +318,27 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     dispatch({ type: 'START_DELETING_SNIPPET', payload: postId });
 
     try {
-        const doc = new DOMParser().parseFromString(postToDeleteFrom.content.rendered, 'text/html');
-        const toolSnippet = doc.querySelector('[data-wp-seo-optimizer-tool="true"]');
+        let contentHasShortcode = SHORTCODE_DETECTION_REGEX.test(postToDeleteFrom.content.rendered);
         
-        if (toolSnippet) {
-            // For backwards compatibility, find and remove an adjacent Tailwind script tag from older snippets.
-            // New snippets have the script tag inside the tool, so this logic won't affect them.
-            const findAndRemoveAdjacentScript = (startNode: Node | null, direction: 'previous' | 'next') => {
-                let currentNode = startNode;
-                 // Traverse past any whitespace text nodes.
-                while (currentNode && currentNode.nodeType === Node.TEXT_NODE && /^\s*$/.test(currentNode.textContent || '')) {
-                    currentNode = direction === 'previous' ? currentNode.previousSibling : currentNode.nextSibling;
-                }
-                // If the adjacent node is the Tailwind script, remove it.
-                if (currentNode && currentNode.nodeType === Node.ELEMENT_NODE) {
-                    const element = currentNode as Element;
-                    if (element.tagName.toLowerCase() === 'script' && (element as HTMLScriptElement).src.includes('cdn.tailwindcss.com')) {
-                        element.remove();
-                        return true; // Script found and removed
-                    }
-                }
-                return false; // Script not found
-            };
-            
-            // Check previous sibling first, then next sibling if not found.
-            if (!findAndRemoveAdjacentScript(toolSnippet.previousSibling, 'previous')) {
-                findAndRemoveAdjacentScript(toolSnippet.nextSibling, 'next');
-            }
-            
-            // Finally, remove the main tool container.
-            toolSnippet.remove();
+        if (!contentHasShortcode) {
+             throw new Error("Tool shortcode not found in post content. Deletion failed.");
         }
         
-        const newContent = doc.body.innerHTML;
+        // Remove all instances of the shortcode from the content using the robust regex.
+        const newContent = postToDeleteFrom.content.rendered.replace(SHORTCODE_REMOVAL_REGEX, '');
         
+        // Update the main blog post with the shortcode removed.
         await updatePost(state.wpConfig, postId, newContent);
 
-        const newPosts = await fetchPosts(state.wpConfig);
+        // If we have a toolId, delete the underlying cf_tool post.
+        if (toolId) {
+            await deleteCfTool(state.wpConfig, toolId);
+        } else {
+            console.warn(`Could not find a toolId for post ${postId}. The shortcode was removed, but the underlying tool post may still exist.`);
+        }
 
+        // Refresh the posts list.
+        const newPosts = await fetchPosts(state.wpConfig);
         dispatch({ type: 'DELETE_SNIPPET_COMPLETE', payload: { posts: newPosts } });
 
     } catch (err) {

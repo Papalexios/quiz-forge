@@ -47,6 +47,7 @@ export interface WordPressPost {
   link: string;
   featuredImageUrl: string | null;
   hasOptimizerSnippet: boolean;
+  toolId?: number; // The ID of the cf_tool custom post
 }
 
 export interface ToolIdea {
@@ -76,6 +77,7 @@ export interface AppState {
   filteredPosts: WordPressPost[];
   postSearchQuery: string;
   selectedPost: WordPressPost | null;
+  setupRequired: boolean; // Flag to indicate if the PHP snippet setup is needed
 
   // Generation State
   toolIdeas: ToolIdea[];

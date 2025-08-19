@@ -73,19 +73,28 @@ export async function validateApiKey(provider: AiProvider, apiKey: string, model
 const getIdeaPrompt = (postTitle: string, postContent: string): string => {
     const cleanContent = stripHtml(postContent).substring(0, 8000);
     return `
-    Analyze the following blog post.
-    Title: "${postTitle}"
-    Content: "${cleanContent}"
+    **Persona:** You are a seasoned product manager and UX strategist specializing in digital content engagement. You have a reputation for transforming static articles into viral, interactive experiences.
 
-    Your task is to suggest three distinct, state-of-the-art, interactive HTML tool ideas that would be highly valuable and engaging for the reader of this post. These tools must be directly related to the post's content and significantly enhance its utility. The tools should be practical and implementable with self-contained HTML, CSS, and JavaScript.
+    **Analysis Task:** Analyze the following blog post.
+    *   **Title:** "${postTitle}"
+    *   **Content:** "${cleanContent}"
 
-    For each idea:
-    1.  Provide a short, catchy title.
-    2.  Provide a one-sentence description of what the tool does. IMPORTANT: This description must be a single line of text and must not contain any newline characters.
-    3.  Suggest a relevant icon name from this list: [calculator, chart, list, idea].
+    **Your Mission:**
+    Suggest three distinct, **elite-level**, interactive HTML tool ideas that would be exceptionally valuable and engaging for this post's reader. The goal is to create a "wow" moment that makes the reader's life easier, offers a unique insight, or helps them apply the post's knowledge instantly.
 
-    Respond with ONLY a valid JSON object in the format: { "ideas": [{ "title": "...", "description": "...", "icon": "..." }] }
-    Ensure the JSON is well-formed and contains no unescaped control characters within strings.
+    **Creative Direction:**
+    *   **Think Beyond the Obvious:** Avoid simple calculators unless the post is purely about a specific formula. Propose more sophisticated tools like interactive checklists, data visualizers, ROI predictors, comparison sliders, personalized quizzes, or configuration wizards.
+    *   **Deeply Contextual:** Each idea MUST be deeply tailored to the specific nuances of the post's content. A generic idea is a failed idea.
+    *   **Action-Oriented:** The tool should empower the user to *do* something with the information, not just passively consume it.
+
+    **Output Specification:**
+    For each of the three ideas:
+    1.  **title:** A short, compelling, action-oriented title.
+    2.  **description:** A concise, single-sentence description of the tool's value proposition for the user. IMPORTANT: This must be a single line of text with no newline characters.
+    3.  **icon:** Suggest a relevant icon name from this exact list: [calculator, chart, list, idea].
+
+    **Your final response MUST be ONLY a valid JSON object in the format: { "ideas": [{ "title": "...", "description": "...", "icon": "..." }] }**
+    Ensure the JSON is perfectly formed and contains no unescaped control characters. Do not include any explanatory text or markdown.
     `;
 };
 
@@ -190,11 +199,12 @@ const getHtmlGenerationPrompt = (postTitle: string, postContent: string, idea: T
     const themeHsl = hexToHsl(themeColor);
     const themeHslString = `${themeHsl.h} ${themeHsl.s}% ${themeHsl.l}%`;
     const themeHslHoverString = `${themeHsl.h} ${themeHsl.s}% ${Math.max(0, themeHsl.l - 8)}%`; // Darker for hover
+    const uniqueId = `cforge-tool-${Date.now()}`;
 
     return `
-    **Persona:** You are a world-class senior front-end engineer and UI/UX designer. Your portfolio is filled with award-winning, pixel-perfect interactive web components that are both beautiful and flawlessly functional. You are a master of modern design trends, Tailwind CSS, and vanilla JavaScript.
+    **Persona:** You are a lead frontend engineer at a company like Stripe or Vercel, known for creating interfaces that are the gold standard of the industry. Your work is defined by its precision, performance, and an obsessive focus on user experience. You will now create an interactive tool that reflects this elite standard.
 
-    **Mission:** Generate a single, complete, self-contained, production-ready HTML snippet for an interactive tool. This snippet will be injected directly into a Shadow DOM. The final output must be **ONLY the raw HTML code** and nothing else.
+    **Mission:** Generate a single, 100% self-contained, production-ready HTML snippet. This snippet will be injected directly onto a live webpage, so it must be completely isolated and well-behaved. The final output must be **ONLY the raw HTML code** and nothing else.
 
     **Tool Request:**
     *   **Blog Post Title:** "${postTitle}"
@@ -203,164 +213,168 @@ const getHtmlGenerationPrompt = (postTitle: string, postContent: string, idea: T
     *   **Content Context (for data and relevance):** "${cleanContent}"
     *   **Primary Accent Color (HSL):** ${themeHslString}
 
-    **Core Principles (Non-negotiable):**
-    1.  **Aesthetic Excellence:** The design must be modern, premium, and clean. Use generous spacing, soft shadows (\`shadow-lg\`), and elegant rounded corners (\`rounded-2xl\`). Use subtle background gradients (e.g., \`bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900\`) to add depth.
-    2.  **Delightful Interactivity:** The tool must feel alive. Use smooth transitions (\`transition-all\`, \`duration-300\`) for all state changes (hover, focus, selection). Animate data updates; for example, make numbers count up or charts animate in. Incorporate simple, clean SVG icons for clarity in buttons or key areas.
-    3.  **Flawless Dark Mode:** Dark mode is critical. Every element MUST be perfectly styled for both light and dark modes using Tailwind's \`dark:\` variants. The dark theme should be sophisticated and easy on the eyes.
-    4.  **Bulletproof Responsiveness:** The layout must be fully responsive, from a 320px mobile screen to a 4K desktop. Use flexbox or grid layouts effectively.
-    5.  **Rock-Solid Accessibility (WCAG AA):** Use semantic HTML, ARIA attributes where needed (\`aria-live\` for dynamic regions), and ensure all interactive elements have highly visible focus states (e.g., \`focus:ring-2 focus:ring-offset-2\`).
+    **Design & UX Philosophy (Non-negotiable):**
+    1.  **Understated Elegance:** The design must be modern, premium, and clean. Use a refined color palette based on Tailwind's \`slate\` colors for text and backgrounds. Create depth with subtle background gradients (e.g., \`bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900\`) and fine-keyed borders (\`border-slate-200 dark:border-slate-700\`). Use generous, consistent spacing.
+    2.  **Delightful Micro-interactions:** The tool must feel responsive. Use smooth transitions (\`transition-all\`, \`duration-300\`) for ALL state changes. When results are calculated, animate them in with a subtle fade and scale effect. Buttons must have clear hover and active states.
+    3.  **Perfect Dark Mode:** Every element MUST be perfectly styled for both light and dark themes using Tailwind's \`dark:\` variants.
+    4.  **Bulletproof Responsiveness:** The layout must be flawless on all screen sizes, from a 320px mobile viewport to a 4K desktop.
+    5.  **Exemplary Accessibility (WCAG AA):** Use semantic HTML (<label>, <input>, <button>). Use ARIA attributes where necessary (\`aria-live="polite"\` for dynamic result regions). Ensure all interactive elements have highly visible focus states.
 
     **Technical Mandates (Strictly Enforced):**
 
-    1.  **RAW HTML ONLY:** Your response MUST start with \`<script src="https://cdn.tailwindcss.com"></script>\` and end with the closing \`</script>\` tag of your logic. Do NOT include Markdown fences (\`\`\`html\`), \`<html>\`, \`<head>\`, or \`<body>\` tags.
+    1.  **RAW HTML ONLY:** Your response MUST start with \`<script src="https://cdn.tailwindcss.com"></script>\` and end with the final closing \`</script>\` tag of your logic. Do NOT include Markdown fences (\`\`\`html\`), \`<html>\`, \`<head>\`, or \`<body>\` tags.
     
     2.  **STRUCTURE & STYLING:**
-        *   The snippet must start with the Tailwind CDN script, immediately followed by a single \`<style>\` block.
-        *   The \`<style>\` block must contain a \`:host { display: block; }\` rule.
-        *   Inside the main container class (\`.tool-container\`), define CSS variables for theming:
-            \`--accent-color: ${themeHslString};\`
-            \`--accent-color-hover: ${themeHslHoverString};\`
-            And use them in Tailwind classes: \`bg-[hsl(var(--accent-color))] hover:bg-[hsl(var(--accent-color-hover))]\`.
+        *   The snippet must start with the Tailwind CDN script: \`<script src="https://cdn.tailwindcss.com"></script>\`.
+        *   The root element of your visible UI MUST have the ID \`${uniqueId}\`.
+        *   Immediately after, include a single \`<style>\` block.
+        *   Inside this \`<style>\` block, define CSS variables for theming on the root element's ID selector:
+            \`#${uniqueId} {
+                --accent-color: ${themeHslString};
+                --accent-color-hover: ${themeHslHoverString};
+                --accent-color-focus-ring: ${themeHsl.h} ${themeHsl.s}% ${themeHsl.l + 20}%;
+             }\`
+            Then, use these variables in your Tailwind classes for buttons and focus rings, e.g., \`bg-[hsl(var(--accent-color))] hover:bg-[hsl(var(--accent-color-hover))] focus:ring-[hsl(var(--accent-color-focus-ring))]\`.
 
     3.  **HTML:**
-        *   The root element must have the class \`tool-container\`.
-        *   Structure your HTML logically and semantically.
+        *   Use semantic HTML. Use \`<label>\`s for all form inputs.
 
     4.  **JAVASCRIPT:**
         *   Place all logic in a single \`<script>\` tag at the very end of the snippet.
-        *   Write clean, modern, and robust vanilla JavaScript.
-        *   **No inline event handlers** (e.g., \`onclick\`). Use \`addEventListener\`.
-        *   Structure your code with clear functions. For complex tools, use a simple state object and functions that update the UI based on state changes.
-        *   **Handle all edge cases.** Sanitize inputs, prevent errors like division by zero, and provide clear user feedback for invalid actions.
-        *   Add concise comments to explain complex logic.
+        *   Wrap your ENTIRE script logic in a DOMContentLoaded event listener to ensure the HTML is ready: \`document.addEventListener('DOMContentLoaded', function() { ... });\`
+        *   Inside, get the root container: \`const toolContainer = document.getElementById('${uniqueId}'); if (!toolContainer) return;\`.
+        *   All subsequent DOM queries MUST be scoped to that container. E.g., \`const button = toolContainer.querySelector('button');\`. This is CRITICAL for isolation.
+        *   **NO INLINE EVENT HANDLERS** (e.g., no \`onclick="..."\`). Use \`addEventListener\` to wire up events.
+        *   Structure your code with clear functions. For complex tools, use a simple state management pattern (e.g., a state object and a \`render()\` function).
+        *   **Gracefully handle all edge cases.** Sanitize user inputs, prevent errors (like division by zero), and provide clear, helpful feedback for invalid actions without breaking the layout or using ugly \`alert()\` boxes.
 
-    Now, generate the complete, premium HTML snippet for the "${idea.title}" tool.
+    Now, based on these exacting standards, generate the complete, premium HTML snippet for the "${idea.title}" tool.
     `;
 };
 
-// --- INSERTION POINT ---
-const getInsertionIndexPrompt = (contentBlocks: string[], htmlSnippet: string): string => {
-    const cleanSnippet = stripHtml(htmlSnippet).substring(0, 300);
-    const blockList = contentBlocks
-        .map((block, index) => `${index + 1}. ${block}`)
-        .join('\n');
 
-    return `
-    You are an expert UX designer and content strategist. Your task is to find the perfect placement for an interactive HTML tool within a blog post to maximize user engagement and contextual relevance.
+// --- "SURGICAL STRIKE" SHORTCODE INSERTION LOGIC ---
 
-    Below is a simplified structure of the blog post, represented by a numbered list of its main content blocks (paragraphs, headings, lists, etc.).
-
-    **Blog Post Structure:**
-    ${blockList}
-
-    **Tool to Insert:**
-    An interactive tool related to: "${cleanSnippet}"
-
-    **Your Goal:**
-    Analyze the flow and content of the blog post structure. Determine the single best location to insert the tool. A perfect location is one that is:
-    1.  **Contextually Relevant:** The tool should appear right after the content it relates to is discussed.
-    2.  **Engaging, Not Disruptive:** It should feel like a natural part of the content, not an interruption. Placing it after a section introduction or summary is often effective.
-    3.  **Visually Balanced:** Avoid placing it between a heading and its first paragraph, or in the middle of a very short list. Placing it between two substantial paragraphs is a safe and effective choice.
-
-    **Your Response:**
-    You must respond with ONLY the number of the content block AFTER which the tool should be inserted. For example, if the best spot is after block number 3, your response must be only "3". Do not add any explanation, punctuation, or extra text. If the very end of the post is the most logical place, respond with the last number (${contentBlocks.length}).
-
-    Your response must be a single integer.
-    `;
-};
-
-export async function insertSnippetIntoContent(state: AppState, postContent: string, htmlSnippet: string): Promise<string> {
-    const doc = new DOMParser().parseFromString(postContent, 'text/html');
-    const contentBlocks = Array.from(doc.body.querySelectorAll('p, h2, h3, h4, ul, ol, blockquote'));
-
-    let insertionIndex;
-    if (contentBlocks.length < 2) {
-        insertionIndex = contentBlocks.length - 1; // Append at the end if post is short
-    } else {
-        const blockRepresentations = contentBlocks.map(el => {
-            const tagName = el.tagName.toLowerCase();
-            const text = stripHtml(el.outerHTML).substring(0, 250);
-            return `[${tagName}] ${text}...`;
-        });
-
-        const prompt = getInsertionIndexPrompt(blockRepresentations, htmlSnippet);
-        insertionIndex = -1;
-
-        try {
-            let responseText: string;
-            if (state.selectedProvider === AiProvider.Gemini) {
-                const ai = new GoogleGenAI({ apiKey: state.apiKeys.gemini });
-                const response = await ai.models.generateContent({
-                    model: AI_PROVIDERS.gemini.defaultModel,
-                    contents: prompt,
-                });
-                responseText = response.text.trim();
-            } else {
-                responseText = await callGenericChatApi(state, prompt, false);
-            }
-
-            const chosenNumber = parseInt(responseText.replace(/\D/g, ''), 10);
-            if (!isNaN(chosenNumber) && chosenNumber > 0 && chosenNumber <= contentBlocks.length) {
-                insertionIndex = chosenNumber - 1; // 0-indexed
-            }
-        } catch (error) {
-            console.error("AI API error in insertSnippetIntoContent:", error);
-        }
-
-        if (insertionIndex === -1) {
-            insertionIndex = Math.floor(contentBlocks.length / 2); // Default fallback
-        }
-    }
+/**
+ * Injects unique comment markers between top-level block elements in an HTML string.
+ */
+function addInsertionMarkers(html: string): string {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const body = doc.body;
+    const children = Array.from(body.children);
     
-    const finalSnippet = createWebComponentWrapper(htmlSnippet);
-    const template = document.createElement('template');
-    template.innerHTML = finalSnippet.trim();
-    
-    if (template.content.firstChild) {
-         if (insertionIndex >= 0 && contentBlocks[insertionIndex]) {
-            contentBlocks[insertionIndex].after(template.content);
-        } else {
-            // If no suitable insertion point, append to the body
-            doc.body.appendChild(template.content);
-        }
+    // Don't add a marker if the content is empty or just whitespace
+    if (body.textContent?.trim() === '') {
+        const marker = doc.createComment(` CFORGE_MARKER_1 `);
+        body.appendChild(marker);
+        return body.innerHTML;
     }
 
-    return doc.body.innerHTML;
+    const firstMarker = doc.createComment(` CFORGE_MARKER_1 `);
+    body.insertBefore(firstMarker, body.firstChild);
+    
+    let counter = 2;
+    children.forEach(child => {
+        const marker = doc.createComment(` CFORGE_MARKER_${counter++} `);
+        child.parentNode?.insertBefore(marker, child.nextSibling);
+    });
+    
+    return body.innerHTML;
 }
 
 
-function createWebComponentWrapper(shadowDomHtml: string): string {
-    const uniqueId = `tool-embed-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    // Escape backticks and backslashes for JS template literal
-    const escapedHtml = shadowDomHtml.replace(/\\/g, '\\\\').replace(/`/g, '\\`');
+const getMarkerToReplacePrompt = (markedUpHtml: string, toolTitle: string, toolDescription: string): string => {
+  return `
+**Persona:** You are an elite web developer and UX expert with an unparalleled understanding of content flow and reader engagement. Your task is to find the best placement for an interactive tool within a blog post.
 
-    const script = `
-        <script>
-            (function() {
-                if (customElements.get('${uniqueId}')) return;
-                const template = document.createElement('template');
-                template.innerHTML = \`${escapedHtml}\`;
-                customElements.define('${uniqueId}', class extends HTMLElement {
-                    constructor() {
-                        super();
-                        this.attachShadow({ mode: 'open' });
-                        this.shadowRoot.appendChild(template.content.cloneNode(true));
+**Mission:**
+I will provide you with the HTML of a blog post containing special insertion markers (e.g., \`<!-- CFORGE_MARKER_1 -->\`). I will also provide the title and description of the tool to be inserted.
+
+1.  **Analyze the Context:** Read the blog post's HTML to understand its structure, topic, and flow.
+2.  **Analyze the Tool:** The tool to be inserted is titled "${toolTitle}" and is described as: "${toolDescription}".
+3.  **Identify the Optimal Location:** Determine the single best marker to replace with this tool. The ideal location is where the tool provides maximum value and feels most natural to the reader. Consider placing it after a relevant introduction or a section that sets up the problem the tool solves.
+4.  **Return the Marker ID:** Your response MUST BE a valid JSON object containing only the ID of the chosen marker.
+
+**Example Response:**
+{
+  "markerId": "CFORGE_MARKER_5"
+}
+
+**Critical Rules:**
+*   Your output must be ONLY the JSON object. Do not include any explanations, introductory text, or markdown code fences.
+*   The value of "markerId" MUST exactly match one of the markers in the provided HTML (e.g., "CFORGE_MARKER_1", "CFORGE_MARKER_2", etc.).
+
+---
+**Blog Post HTML with Insertion Markers:**
+${markedUpHtml}
+---
+
+Now, provide the JSON object specifying the best marker to replace.
+  `;
+};
+
+export async function insertShortcodeIntoContent(state: AppState, postContent: string, shortcode: string): Promise<string> {
+    const markedUpHtml = addInsertionMarkers(postContent);
+    
+    // Truncate the HTML for the prompt to avoid token limits, while keeping the structure.
+    const promptHtml = markedUpHtml.length > 12000 ? markedUpHtml.substring(0, 12000) + '...' : markedUpHtml;
+    const prompt = getMarkerToReplacePrompt(promptHtml, state.selectedIdea!.title, state.selectedIdea!.description);
+
+    let markerToReplace: string | null = null;
+    let responseText: string = '';
+
+    try {
+        if (state.selectedProvider === AiProvider.Gemini) {
+            const ai = new GoogleGenAI({ apiKey: state.apiKeys.gemini });
+            const response = await ai.models.generateContent({
+                model: AI_PROVIDERS.gemini.defaultModel,
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: { markerId: { type: Type.STRING, description: "The ID of the marker to replace, e.g., CFORGE_MARKER_5" } }
                     }
-                });
-            })();
-        </script>
-    `;
+                }
+            });
+            responseText = response.text;
+        } else {
+            responseText = await callGenericChatApi(state, prompt, true, 256);
+        }
+        
+        const firstBrace = responseText.indexOf('{');
+        const lastBrace = responseText.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+            const jsonString = responseText.substring(firstBrace, lastBrace + 1);
+            const result = JSON.parse(jsonString);
+            if (result.markerId && typeof result.markerId === 'string' && result.markerId.startsWith('CFORGE_MARKER_')) {
+                markerToReplace = result.markerId;
+            }
+        }
+    } catch (error) {
+        console.error("AI API error during marker selection:", error);
+    }
 
-    return `
-        <div data-wp-seo-optimizer-tool="true" style="margin: 2.5em 0; clear: both;">
-            <${uniqueId}></${uniqueId}>
-            ${script}
-        </div>
-    `;
+    let newContent: string;
+    if (markerToReplace) {
+        const markerComment = `<!-- ${markerToReplace.trim()} -->`;
+        if (markedUpHtml.includes(markerComment)) {
+            newContent = markedUpHtml.replace(markerComment, `\n\n${shortcode}\n\n`);
+        } else {
+            console.warn(`AI selected marker "${markerToReplace}" but it was not found. Appending shortcode.`);
+            newContent = postContent + `\n\n${shortcode}\n\n`;
+        }
+    } else {
+        console.warn("AI failed to return a valid marker. Appending shortcode.");
+        newContent = postContent + `\n\n${shortcode}\n\n`;
+    }
+    
+    // Final cleanup: Remove all other markers from the final result.
+    return newContent.replace(/<!--\s*CFORGE_MARKER_\d+\s*-->/g, '');
 }
 
 // --- GENERIC API HANDLER for OpenAI, Anthropic, OpenRouter ---
-async function callGenericChatApi(state: AppState, prompt: string, isJsonMode: boolean): Promise<string> {
+async function callGenericChatApi(state: AppState, prompt: string, isJsonMode: boolean, maxTokens: number = 4000): Promise<string> {
     const { selectedProvider, apiKeys, openRouterModel } = state;
     const apiKey = apiKeys[selectedProvider];
     
@@ -374,18 +388,18 @@ async function callGenericChatApi(state: AppState, prompt: string, isJsonMode: b
         case AiProvider.OpenAI:
             url = 'https://api.openai.com/v1/chat/completions';
             headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
-            body = { model, messages: [{ role: 'user', content: prompt }], temperature: 0.5, max_tokens: 4000 };
+            body = { model, messages: [{ role: 'user', content: prompt }], temperature: 0.5, max_tokens: maxTokens };
             if (isJsonMode) body.response_format = { type: 'json_object' };
             break;
         case AiProvider.Anthropic:
             url = 'https://api.anthropic.com/v1/messages';
             headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
-            body = { model, messages: [{ role: 'user', content: prompt }], temperature: 0.5, max_tokens: 4000 };
+            body = { model, messages: [{ role: 'user', content: prompt }], temperature: 0.5, max_tokens: maxTokens };
             break;
         case AiProvider.OpenRouter:
              url = 'https://openrouter.ai/api/v1/chat/completions';
              headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
-             body = { model, messages: [{ role: 'user', content: prompt }], temperature: 0.5 };
+             body = { model, messages: [{ role: 'user', content: prompt }], temperature: 0.5, max_tokens: maxTokens };
              if (isJsonMode) body.response_format = { type: 'json_object' };
              break;
         default:

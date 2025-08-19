@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { WordPressPost, ToolIdea } from '../types';
 import { Card } from './common/Card';
 import { Button } from './common/Button';
@@ -12,15 +12,16 @@ import { CheckIcon } from './icons/CheckIcon';
 import { LightbulbIcon } from './icons/LightbulbIcon';
 import { WorldIcon } from './icons/FormIcons';
 import { Spinner } from './common/Spinner';
+import { ConfirmationModal } from './common/ConfirmationModal';
 
 
 const PostCard: React.FC<{ 
   post: WordPressPost, 
   isSelected: boolean, 
   onSelect: () => void,
-  onDelete: () => void,
+  onDeleteRequest: () => void,
   isDeleting: boolean
-}> = ({ post, isSelected, onSelect, onDelete, isDeleting }) => {
+}> = ({ post, isSelected, onSelect, onDeleteRequest, isDeleting }) => {
   const statusBadge = post.hasOptimizerSnippet ? (
     <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-green-100 dark:bg-green-900/70 text-green-700 dark:text-green-300 text-xs font-semibold px-2 py-1 rounded-full border border-green-200 dark:border-green-700">
       <CheckIcon className="w-4 h-4" />
@@ -35,9 +36,7 @@ const PostCard: React.FC<{
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // prevent post selection
-    if (window.confirm(`Are you sure you want to delete the tool from "${post.title.rendered}"? This action cannot be undone.`)) {
-        onDelete();
-    }
+    onDeleteRequest();
   };
 
   return (
@@ -124,6 +123,8 @@ export default function Step2Analyze(): React.ReactNode {
   const { state, selectPost, selectIdea, setPostSearchQuery, deleteSnippet } = useAppContext();
   const { filteredPosts, selectedPost, status, error, toolIdeas, postSearchQuery, deletingPostId } = state;
   const [loadingMessage, setLoadingMessage] = React.useState(loadingMessages[0]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<WordPressPost | null>(null);
 
   React.useEffect(() => {
     if (status === 'loading' && !selectedPost) return; // Ignore initial post loading
@@ -136,6 +137,20 @@ export default function Step2Analyze(): React.ReactNode {
         return () => clearInterval(intervalId);
     }
   }, [status, toolIdeas.length, selectedPost]);
+
+  const handleDeleteRequest = (post: WordPressPost) => {
+    setPostToDelete(post);
+    setIsModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (postToDelete) {
+      deleteSnippet(postToDelete.id, postToDelete.toolId).finally(() => {
+        setIsModalOpen(false);
+        setPostToDelete(null);
+      });
+    }
+  };
 
   const renderIdeasSection = () => {
     if (!selectedPost) {
@@ -176,45 +191,63 @@ export default function Step2Analyze(): React.ReactNode {
   };
   
   return (
-    <div className="animate-fade-in space-y-8 sm:space-y-12">
-      <section>
-        <h2 className="text-xl sm:text-2xl font-bold mb-4 text-slate-800 dark:text-slate-100">1. Select a Post</h2>
-        <div className="mb-6">
-            <Input 
-                type="search"
-                icon={<SearchIcon className="w-5 h-5" />}
-                placeholder="Search posts by title..."
-                value={postSearchQuery}
-                onChange={(e) => setPostSearchQuery(e.target.value)}
-            />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {filteredPosts.length > 0 ? (
-            filteredPosts.map((post) => (
-              <PostCard 
-                  key={post.id} 
-                  post={post}
-                  isSelected={selectedPost?.id === post.id}
-                  onSelect={() => selectPost(post)}
-                  onDelete={() => deleteSnippet(post.id)}
-                  isDeleting={deletingPostId === post.id}
+    <>
+      <div className="animate-fade-in space-y-8 sm:space-y-12">
+        <section>
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 text-slate-800 dark:text-slate-100">1. Select a Post</h2>
+          <div className="mb-6">
+              <Input 
+                  type="search"
+                  icon={<SearchIcon className="w-5 h-5" />}
+                  placeholder="Search posts by title..."
+                  value={postSearchQuery}
+                  onChange={(e) => setPostSearchQuery(e.target.value)}
               />
-            ))
-          ) : (
-             <div className="text-center py-8 text-slate-500 dark:text-slate-400 md:col-span-2 lg:col-span-3">
-                <p>No posts found for your search query.</p>
-             </div>
-          )}
-        </div>
-      </section>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {filteredPosts.length > 0 ? (
+              filteredPosts.map((post) => (
+                <PostCard 
+                    key={post.id} 
+                    post={post}
+                    isSelected={selectedPost?.id === post.id}
+                    onSelect={() => selectPost(post)}
+                    onDeleteRequest={() => handleDeleteRequest(post)}
+                    isDeleting={deletingPostId === post.id}
+                />
+              ))
+            ) : (
+               <div className="text-center py-8 text-slate-500 dark:text-slate-400 md:col-span-2 lg:col-span-3">
+                  <p>No posts found for your search query.</p>
+               </div>
+            )}
+          </div>
+        </section>
 
-      <section>
-        <h2 className="text-xl sm:text-2xl font-bold mb-4 text-slate-800 dark:text-slate-100">
-            2. Choose an Idea
-            {selectedPost && <span className="text-lg text-slate-500 dark:text-slate-400 font-normal ml-2" dangerouslySetInnerHTML={{__html: `for "${selectedPost.title.rendered}"`}}/>}
-        </h2>
-        {renderIdeasSection()}
-      </section>
-    </div>
+        <section>
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 text-slate-800 dark:text-slate-100">
+              2. Choose an Idea
+              {selectedPost && <span className="text-lg text-slate-500 dark:text-slate-400 font-normal ml-2" dangerouslySetInnerHTML={{__html: `for "${selectedPost.title.rendered}"`}}/>}
+          </h2>
+          {renderIdeasSection()}
+        </section>
+      </div>
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Confirm Tool Deletion"
+        confirmText="Delete Tool"
+        isConfirming={deletingPostId !== null}
+      >
+        <p>
+          Are you sure you want to permanently delete the tool from the post:
+          <strong className="block mt-2" dangerouslySetInnerHTML={{ __html: postToDelete?.title.rendered || '' }} />
+        </p>
+        <p className="mt-2 text-sm text-slate-500">
+          This will remove the shortcode from the post and delete the tool's data from WordPress. This action cannot be undone.
+        </p>
+    </ConfirmationModal>
+  </>
   );
 }

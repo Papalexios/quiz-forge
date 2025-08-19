@@ -12,6 +12,7 @@ import { ArrowRightIcon } from './icons/ArrowRightIcon';
 import { LightbulbIcon } from './icons/LightbulbIcon';
 import { ChartIcon } from './icons/ToolIcons';
 import { CheckIcon } from './icons/CheckIcon';
+import SetupInstructions from './SetupInstructions';
 
 const ResourceLink: React.FC<{ title: string; url: string }> = ({ title, url }) => (
   <a href={url} target="_blank" rel="noopener noreferrer" className="block text-left no-underline group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 rounded-xl">
@@ -60,6 +61,10 @@ export default function Step1Configure(): React.ReactNode {
     if (!isApiKeyValid) return;
     connectToWordPress({ url, username, appPassword });
   };
+
+  if (state.setupRequired) {
+    return <SetupInstructions onRetryConnection={handleSubmit} />;
+  }
 
   return (
     <div className="animate-fade-in space-y-10 sm:space-y-16">
