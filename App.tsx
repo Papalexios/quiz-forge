@@ -49,14 +49,28 @@ export default function App(): React.ReactNode {
         </header>
         
         {state.currentStep === Step.Configure && (
-          <div className="text-center my-8 animate-fade-in">
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
-              The Sizzle That Sets Your Blog Apart.
-            </h2>
-            <p className="mt-4 max-w-3xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-slate-400">
-              Instantly embed AI-generated interactive tools to captivate readers and dominate search rankings. Go from static text to an interactive experience in <span className="font-bold text-slate-800 dark:text-slate-200">minutes</span>, not days.
-            </p>
-          </div>
+          <>
+            <div className="text-center my-8 animate-fade-in">
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
+                The Sizzle That Sets Your Blog Apart.
+              </h2>
+              <p className="mt-4 max-w-3xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-slate-400">
+                Instantly embed AI-generated interactive tools to captivate readers and dominate search rankings. Go from static text to an interactive experience in <span className="font-bold text-slate-800 dark:text-slate-200">minutes</span>, not days.
+              </p>
+            </div>
+
+            <div className="text-center mb-12 animate-fade-in" style={{ animationDelay: '200ms' }}>
+              <a
+                href="https://viral-post.affiliatemarketingforsuccess.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-3 px-6 py-4 sm:px-8 text-base sm:text-lg font-bold text-white bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 rounded-full shadow-lg hover:scale-105 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-pink-500/50 dark:focus:ring-pink-400/50 transition-all duration-300 ease-in-out transform group"
+              >
+                <SparklesIcon className="w-6 h-6 transition-transform duration-500 group-hover:rotate-12" />
+                <span>Dominate Your Niche – Unlock Your Complete AI-Powered SEO Arsenal</span>
+              </a>
+            </div>
+          </>
         )}
 
         <main className="max-w-5xl mx-auto">
