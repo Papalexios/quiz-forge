@@ -4,12 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ContentForge AI</title>
+    <title>QuizForge AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script>
       // Enable class-based dark mode so the theme toggle works.
       tailwind.config = {
         darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+          },
+        },
       }
     </script>
   <script type="importmap">
@@ -18,7 +28,8 @@
     "react/": "https://esm.sh/react@^19.1.1/",
     "react": "https://esm.sh/react@^19.1.1",
     "@google/genai": "https://esm.sh/@google/genai@^1.14.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.1.1/"
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "framer-motion": "https://esm.sh/framer-motion@^11.3.12"
   }
 }
 </script>
@@ -40,9 +51,18 @@
   .dark .blinking-cursor {
     background-color: #93c5fd; /* blue-300 */
   }
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+  .bg-pattern {
+    background-image: radial-gradient(circle at top left, theme('colors.slate.100'), transparent), radial-gradient(circle at bottom right, theme('colors.blue.100'), transparent);
+  }
+  .dark .bg-pattern {
+    background-image: radial-gradient(circle at 2% 5%, theme('colors.slate.800') 0px, transparent 100%), radial-gradient(circle at 95% 95%, #0c1e44 0px, transparent 100%);
+  }
 </style>
 </head>
-  <body class="bg-slate-50 dark:bg-slate-900">
+  <body class="bg-slate-50 dark:bg-slate-900 bg-pattern">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

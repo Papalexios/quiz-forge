@@ -1,5 +1,5 @@
 {
-  "name": "ContentForge AI",
-  "description": "An AI-powered tool to enhance WordPress blog posts with interactive HTML snippets. It analyzes posts, suggests valuable tool ideas, generates the code, and inserts it to boost reader engagement and topical authority.",
+  "name": "QuizForge AI",
+  "description": "An AI-powered tool to enhance WordPress blog posts with interactive quizzes. It analyzes posts, suggests relevant quiz ideas, generates the code, and inserts it to boost reader engagement and knowledge retention.",
   "requestFramePermissions": []
 }
