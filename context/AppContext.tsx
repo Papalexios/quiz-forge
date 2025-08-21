@@ -1,23 +1,24 @@
 import React, { createContext, useReducer, useContext, useCallback, useMemo, useEffect } from 'react';
-import { AppState, Step, WordPressConfig, WordPressPost, ToolIdea, AiProvider, ApiKeys, ApiValidationStatuses, ApiValidationStatus, Theme } from '../types';
+import { AppState, Step, WordPressConfig, WordPressPost, AiProvider, ApiKeys, ApiValidationStatuses, ApiValidationStatus, Theme, QuizDifficulty, QuizData } from '../types';
 import { fetchPosts, updatePost, checkSetup, createCfTool, deleteCfTool } from '../services/wordpressService';
-import { validateApiKey, suggestToolIdeas, insertShortcodeIntoContent, generateHtmlSnippetStream } from '../services/aiService';
+import { generateQuizData, renderQuizToStaticHtml, regenerateQuizData, validateApiKey } from '../services/aiService';
 import { SHORTCODE_DETECTION_REGEX, SHORTCODE_REMOVAL_REGEX } from '../constants';
 
 type Action =
   | { type: 'RESET' }
   | { type: 'RESET_TO_ANALYZE' }
-  | { type: 'START_LOADING'; payload?: 'ideas' | 'snippet' | 'insert' }
+  | { type: 'START_LOADING'; }
   | { type: 'SET_ERROR'; payload: string }
+  | { type: 'CLEAR_ERROR' }
   | { type: 'SET_SETUP_REQUIRED'; payload: boolean }
   | { type: 'CONFIGURE_SUCCESS'; payload: { config: WordPressConfig; posts: WordPressPost[] } }
   | { type: 'SELECT_POST'; payload: WordPressPost }
-  | { type: 'GET_IDEAS_SUCCESS'; payload: ToolIdea[] }
-  | { type: 'SELECT_IDEA'; payload: ToolIdea }
+  | { type: 'GENERATE_QUIZ_SUCCESS'; payload: QuizData }
   | { type: 'SET_THEME_COLOR'; payload: string }
-  | { type: 'GENERATE_SNIPPET_START' }
-  | { type: 'GENERATE_SNIPPET_CHUNK'; payload: string }
-  | { type: 'GENERATE_SNIPPET_COMPLETE' }
+  | { type: 'SET_QUIZ_DIFFICULTY'; payload: QuizDifficulty }
+  | { type: 'SET_EDITABLE_QUIZ_TITLE', payload: string }
+  | { type: 'SET_REGENERATION_FEEDBACK', payload: string }
+  | { type: 'START_INSERTING' }
   | { type: 'INSERT_SNIPPET_SUCCESS'; payload: { posts: WordPressPost[]; updatedPost: WordPressPost } }
   | { type: 'START_DELETING_SNIPPET'; payload: number }
   | { type: 'DELETE_SNIPPET_COMPLETE'; payload: { posts: WordPressPost[] } }
@@ -48,6 +49,7 @@ const getInitialTheme = (): Theme => {
 const initialState: AppState = {
   currentStep: Step.Configure,
   status: 'idle',
+  insertingStatus: 'idle',
   error: null,
   deletingPostId: null,
   theme: getInitialTheme(),
@@ -64,10 +66,11 @@ const initialState: AppState = {
   selectedPost: null,
   setupRequired: false,
   // Generation State
-  toolIdeas: [],
-  selectedIdea: null,
-  generatedSnippet: '',
+  quizData: null,
+  editableQuizTitle: '',
+  regenerationFeedback: '',
   themeColor: '#3b82f6',
+  quizDifficulty: 'Challenging',
 };
 
 const appReducer = (state: AppState, action: Action): AppState => {
@@ -82,17 +85,20 @@ const appReducer = (state: AppState, action: Action): AppState => {
         ...state,
         currentStep: Step.Analyze,
         status: 'idle',
+        insertingStatus: 'idle',
         error: null,
         deletingPostId: null,
         selectedPost: null,
-        toolIdeas: [],
-        selectedIdea: null,
-        generatedSnippet: '',
+        quizData: null,
+        editableQuizTitle: '',
+        regenerationFeedback: '',
       };
     case 'START_LOADING':
-      return { ...state, status: 'loading', error: null, setupRequired: false };
+      return { ...state, status: 'loading', error: null, setupRequired: false, quizData: null };
     case 'SET_ERROR':
-      return { ...state, status: 'error', error: action.payload, deletingPostId: null };
+      return { ...state, status: 'error', insertingStatus: 'error', error: action.payload, deletingPostId: null };
+    case 'CLEAR_ERROR':
+      return { ...state, error: null };
     case 'SET_SETUP_REQUIRED':
       return { ...state, status: 'error', setupRequired: action.payload };
     case 'CONFIGURE_SUCCESS':
@@ -106,24 +112,31 @@ const appReducer = (state: AppState, action: Action): AppState => {
         setupRequired: false,
       };
     case 'SELECT_POST':
-      return { ...state, selectedPost: action.payload, toolIdeas: [], generatedSnippet: '' };
-    case 'GET_IDEAS_SUCCESS':
-      return { ...state, status: 'idle', toolIdeas: action.payload };
-    case 'SELECT_IDEA':
-      return { ...state, selectedIdea: action.payload, currentStep: Step.Generate };
+      return { 
+        ...state, 
+        selectedPost: action.payload, 
+        currentStep: Step.Generate,
+        editableQuizTitle: '',
+        regenerationFeedback: '',
+        error: null,
+      };
+    case 'GENERATE_QUIZ_SUCCESS':
+      return { ...state, status: 'idle', error: null, quizData: action.payload, editableQuizTitle: action.payload.quizTitle };
     case 'SET_THEME_COLOR':
         return { ...state, themeColor: action.payload };
-    case 'GENERATE_SNIPPET_START':
-        return { ...state, status: 'loading', generatedSnippet: '', error: null };
-    case 'GENERATE_SNIPPET_CHUNK':
-        return { ...state, generatedSnippet: state.generatedSnippet + action.payload };
-    case 'GENERATE_SNIPPET_COMPLETE':
-        return { ...state, status: 'idle' };
+    case 'SET_QUIZ_DIFFICULTY':
+        return { ...state, quizDifficulty: action.payload };
+    case 'SET_EDITABLE_QUIZ_TITLE':
+        return { ...state, editableQuizTitle: action.payload };
+    case 'SET_REGENERATION_FEEDBACK':
+        return { ...state, regenerationFeedback: action.payload };
+    case 'START_INSERTING':
+        return { ...state, insertingStatus: 'loading', error: null };
     case 'INSERT_SNIPPET_SUCCESS':
         const filteredAfterInsert = action.payload.posts.filter(post => post.title.rendered.toLowerCase().includes(state.postSearchQuery.toLowerCase()));
         return { 
             ...state, 
-            status: 'success',
+            insertingStatus: 'success',
             posts: action.payload.posts,
             filteredPosts: filteredAfterInsert,
             selectedPost: action.payload.updatedPost,
@@ -139,7 +152,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
             posts: action.payload.posts,
             filteredPosts: filteredAfterDelete,
             selectedPost: state.selectedPost?.id === state.deletingPostId ? null : state.selectedPost,
-            toolIdeas: state.selectedPost?.id === state.deletingPostId ? [] : state.toolIdeas,
+            quizData: state.selectedPost?.id === state.deletingPostId ? null : state.quizData,
         };
     case 'SET_POST_SEARCH_QUERY': {
         const query = action.payload.toLowerCase();
@@ -165,9 +178,11 @@ const AppContext = createContext<{
   state: AppState;
   connectToWordPress: (config: WordPressConfig) => Promise<void>;
   selectPost: (post: WordPressPost) => Promise<void>;
-  selectIdea: (idea: ToolIdea) => void;
   setThemeColor: (color: string) => void;
-  generateSnippet: () => Promise<void>;
+  setQuizDifficulty: (difficulty: QuizDifficulty) => void;
+  setEditableQuizTitle: (title: string) => void;
+  setRegenerationFeedback: (feedback: string) => void;
+  regenerateQuiz: () => Promise<void>;
   insertSnippet: () => Promise<void>;
   deleteSnippet: (postId: number, toolId?: number) => Promise<void>;
   setPostSearchQuery: (query: string) => void;
@@ -230,12 +245,10 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const connectToWordPress = useCallback(async (config: WordPressConfig) => {
     dispatch({ type: 'START_LOADING' });
     try {
-      // First, check for setup readiness.
       const isSetup = await checkSetup(config);
       if (!isSetup) {
         dispatch({ type: 'SET_SETUP_REQUIRED', payload: true });
         dispatch({ type: 'SET_ERROR', payload: 'A one-time setup is required.' });
-        // Store config so retry can use it
         sessionStorage.setItem(WP_CONFIG_KEY, JSON.stringify(config)); 
         return;
       }
@@ -253,53 +266,81 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, []);
 
-  const selectPost = useCallback(async (post: WordPressPost) => {
-    dispatch({ type: 'SELECT_POST', payload: post });
+  const generateAndSetQuizData = useCallback(async (post: WordPressPost, difficulty: QuizDifficulty, quizData?: QuizData, feedback?: string) => {
     dispatch({ type: 'START_LOADING' });
     try {
-      const ideas = await suggestToolIdeas(state, post.title.rendered, post.content.rendered);
-      dispatch({ type: 'GET_IDEAS_SUCCESS', payload: ideas });
+        let data;
+        if (quizData && feedback) {
+            // This is a regeneration call
+            data = await regenerateQuizData(state, post.title.rendered, post.content.rendered, quizData, feedback);
+        } else {
+            // This is a fresh generation call
+            data = await generateQuizData(state, post.title.rendered, post.content.rendered, difficulty);
+        }
+      dispatch({ type: 'GENERATE_QUIZ_SUCCESS', payload: data });
     } catch (err) {
-      dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Failed to generate ideas' });
+      dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Failed to generate quiz data.' });
     }
   }, [state]);
+
+  const selectPost = useCallback(async (post: WordPressPost) => {
+    dispatch({ type: 'SELECT_POST', payload: post });
+    await generateAndSetQuizData(post, state.quizDifficulty);
+  }, [generateAndSetQuizData, state.quizDifficulty]);
   
-  const selectIdea = useCallback((idea: ToolIdea) => dispatch({ type: 'SELECT_IDEA', payload: idea }), []);
+  const regenerateQuiz = useCallback(async () => {
+    if (state.selectedPost && state.quizData) {
+        await generateAndSetQuizData(state.selectedPost, state.quizDifficulty, state.quizData, state.regenerationFeedback);
+    }
+  }, [state.selectedPost, state.quizDifficulty, state.quizData, state.regenerationFeedback, generateAndSetQuizData]);
 
   const setThemeColor = useCallback((color: string) => dispatch({ type: 'SET_THEME_COLOR', payload: color }), []);
   
-  const generateSnippet = useCallback(async () => {
-    if (!state.selectedPost || !state.selectedIdea) return;
-    dispatch({ type: 'GENERATE_SNIPPET_START' });
-    try {
-      const stream = generateHtmlSnippetStream(state, state.selectedPost.title.rendered, state.selectedPost.content.rendered, state.selectedIdea, state.themeColor);
-      for await (const chunk of stream) {
-        dispatch({ type: 'GENERATE_SNIPPET_CHUNK', payload: chunk });
+  const setQuizDifficulty = useCallback((difficulty: QuizDifficulty) => {
+      dispatch({ type: 'SET_QUIZ_DIFFICULTY', payload: difficulty });
+      if (state.selectedPost) {
+          generateAndSetQuizData(state.selectedPost, difficulty);
       }
-    } catch (err) {
-      dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Failed to generate snippet' });
-    } finally {
-      dispatch({ type: 'GENERATE_SNIPPET_COMPLETE' });
-    }
-  }, [state]);
+  }, [state.selectedPost, generateAndSetQuizData]);
 
+  const setEditableQuizTitle = useCallback((title: string) => dispatch({ type: 'SET_EDITABLE_QUIZ_TITLE', payload: title }), []);
+  const setRegenerationFeedback = useCallback((feedback: string) => dispatch({ type: 'SET_REGENERATION_FEEDBACK', payload: feedback }), []);
+  
   const insertSnippet = useCallback(async () => {
-    if (!state.wpConfig || !state.selectedPost || !state.generatedSnippet || !state.selectedIdea) return;
-    dispatch({ type: 'START_LOADING' });
+    if (!state.wpConfig || !state.selectedPost || !state.quizData) return;
+    dispatch({ type: 'START_INSERTING' });
     try {
-      // 1. Create the tool as a custom post, which returns the new tool's ID.
-      const { id: newToolId } = await createCfTool(state.wpConfig, state.selectedIdea.title, state.generatedSnippet);
+      const finalQuizData = { ...state.quizData, quizTitle: state.editableQuizTitle };
+      const finalHtml = renderQuizToStaticHtml(finalQuizData, state.themeColor);
+
+      const { id: newToolId } = await createCfTool(state.wpConfig, finalQuizData.quizTitle, finalHtml);
       
-      // 2. Create the shortcode string.
       const shortcode = `[contentforge_tool id="${newToolId}"]`;
 
-      // 3. Intelligently insert the shortcode into the main post's content.
-      const newContent = await insertShortcodeIntoContent(state, state.selectedPost.content.rendered, shortcode);
+      // Smart Insertion Logic
+      const newContent = (() => {
+          const originalContent = state.selectedPost.content.rendered;
+          const shortcodeWithNewlines = `\n\n${shortcode}\n\n`;
+
+          // Try to find the last h2 or h3 tag to insert before
+          const lastH2 = originalContent.lastIndexOf('</h2>');
+          const lastH3 = originalContent.lastIndexOf('</h3>');
+          const insertionPoint = Math.max(lastH2, lastH3);
+
+          if (insertionPoint !== -1) {
+              // Find the start of that tag
+              const tagStart = originalContent.lastIndexOf('<h', insertionPoint);
+              if (tagStart !== -1) {
+                  return originalContent.substring(0, tagStart) + shortcodeWithNewlines + originalContent.substring(tagStart);
+              }
+          }
+          
+          // Fallback to appending at the end
+          return originalContent + shortcodeWithNewlines;
+      })();
       
-      // 4. Update the main post.
       await updatePost(state.wpConfig, state.selectedPost.id, newContent);
       
-      // 5. Fetch all posts again to refresh the entire UI state.
       const newPosts = await fetchPosts(state.wpConfig);
       const updatedPost = newPosts.find(p => p.id === state.selectedPost!.id)!;
 
@@ -324,24 +365,19 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
              throw new Error("Tool shortcode not found in post content. Deletion failed.");
         }
         
-        // Remove all instances of the shortcode from the content using the robust regex.
         const newContent = postToDeleteFrom.content.rendered.replace(SHORTCODE_REMOVAL_REGEX, '');
-        
-        // Update the main blog post with the shortcode removed.
         await updatePost(state.wpConfig, postId, newContent);
 
-        // If we have a toolId, delete the underlying cf_tool post.
         if (toolId) {
             await deleteCfTool(state.wpConfig, toolId);
         } else {
             console.warn(`Could not find a toolId for post ${postId}. The shortcode was removed, but the underlying tool post may still exist.`);
         }
 
-        // Refresh the posts list.
         const newPosts = await fetchPosts(state.wpConfig);
         dispatch({ type: 'DELETE_SNIPPET_COMPLETE', payload: { posts: newPosts } });
 
-    } catch (err) {
+    } catch (err)      {
       dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Failed to delete snippet' });
     }
   }, [state.wpConfig, state.posts]);
@@ -391,19 +427,19 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     dispatch({ type: 'SET_THEME', payload: theme });
   }, []);
   
-  // Effect to save AI configuration to localStorage whenever it changes
   useEffect(() => {
     saveAiConfigToLocalStorage();
   }, [state.apiKeys, state.selectedProvider, state.openRouterModel, saveAiConfigToLocalStorage]);
-
 
   const value = useMemo(() => ({
     state,
     connectToWordPress,
     selectPost,
-    selectIdea,
     setThemeColor,
-    generateSnippet,
+    setQuizDifficulty,
+    setEditableQuizTitle,
+    setRegenerationFeedback,
+    regenerateQuiz,
     insertSnippet,
     deleteSnippet,
     setPostSearchQuery,
@@ -418,9 +454,11 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     state, 
     connectToWordPress, 
     selectPost, 
-    selectIdea, 
-    setThemeColor, 
-    generateSnippet, 
+    setThemeColor,
+    setQuizDifficulty,
+    setEditableQuizTitle,
+    setRegenerationFeedback,
+    regenerateQuiz, 
     insertSnippet, 
     deleteSnippet, 
     setPostSearchQuery, 
