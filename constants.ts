@@ -6,12 +6,12 @@ export const STEP_DESCRIPTIONS: Record<Step, { title: string; description: strin
     description: 'Connect to your WordPress site.',
   },
   [Step.Analyze]: {
-    title: 'Select a Post',
-    description: 'Choose which content to enhance.',
+    title: 'Analyze & Select',
+    description: 'Choose a post and an enhancement idea.',
   },
   [Step.Generate]: {
-    title: 'Generate & Customize',
-    description: 'Instantly preview and embed your quiz.',
+    title: 'Generate & Insert',
+    description: 'Generate HTML and update your post.',
   },
 };
 
@@ -45,4 +45,4 @@ export const SHORTCODE_DETECTION_REGEX = /\[\s*contentforge_tool\s+id\s*=\s*["']
 /**
  * A global, case-insensitive regex to find and remove all instances of the shortcode.
  */
-export const SHORTCODE_REMOVAL_REGEX = /\[\s*contentforge_tool\s+id\s*=\s*["']?(\d+)["']?\s*.*?\]/gi;
+export const SHORTCODE_REMOVAL_REGEX = /\[\s*contentforge_tool\s+id\s*=\s*["']?\d+["']?\s*.*?\]/gi;

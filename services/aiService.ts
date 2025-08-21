@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { AppState, AiProvider, QuizDifficulty, QuizData } from '../types';
+import { AppState, ToolIdea, AiProvider } from '../types';
 import { AI_PROVIDERS } from "../constants";
 
 // Helper to strip HTML tags for cleaner prompts
@@ -16,6 +16,7 @@ export async function validateApiKey(provider: AiProvider, apiKey: string, model
   try {
     switch (provider) {
       case AiProvider.Gemini:
+        // A cheap call to list models to verify the key
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
         const geminiResponse = await fetch(geminiUrl);
         return geminiResponse.ok;
@@ -37,9 +38,10 @@ export async function validateApiKey(provider: AiProvider, apiKey: string, model
             body: JSON.stringify({
                 model: "claude-3-haiku-20240307",
                 max_tokens: 1,
-                messages: [{ role: "user", content: "h" }]
+                messages: [{ role: "user", content: "h" }] // minimal request
             })
         });
+        // 401 is invalid auth, anything else might be a different issue but key is likely ok.
         return anthropicResponse.status !== 401;
 
       case AiProvider.OpenRouter:
@@ -67,101 +69,41 @@ export async function validateApiKey(provider: AiProvider, apiKey: string, model
 }
 
 
-const GeminiSchema = {
-    type: Type.OBJECT,
-    properties: {
-        quizTitle: { type: Type.STRING, description: "A compelling, short title for the quiz." },
-        quizType: { type: Type.STRING, enum: ['knowledge-check', 'personality'], description: "The optimal quiz type based on the content." },
-        questions: {
-            type: Type.ARRAY,
-            description: "An array of 3-8 question objects.",
-            items: {
-                type: Type.OBJECT,
-                properties: {
-                    questionText: { type: Type.STRING, description: "The text of the question." },
-                    options: {
-                        type: Type.ARRAY,
-                        description: "An array of options. For knowledge-check, these are strings. For personality, they are objects.",
-                        items: {
-                            oneOf: [
-                                { type: Type.STRING }, // For knowledge-check
-                                { // For personality
-                                    type: Type.OBJECT,
-                                    properties: {
-                                        text: { type: Type.STRING, description: "The option text." },
-                                        pointsFor: { type: Type.STRING, description: "The 'id' of the outcome this option contributes to." }
-                                    },
-                                     required: ['text', 'pointsFor']
-                                }
-                            ]
-                        }
-                    },
-                    correctAnswerIndex: { type: Type.INTEGER, description: "For knowledge-check only. The 0-based index of the correct answer." },
-                    explanation: { type: Type.STRING, description: "For knowledge-check only. A helpful, insightful explanation of the correct answer." }
-                },
-                required: ['questionText', 'options']
-            }
-        },
-        results: {
-            type: Type.ARRAY,
-            description: "For 'knowledge-check' quizzes only. An array of result tiers based on score.",
-            items: {
-                type: Type.OBJECT,
-                properties: {
-                    scoreThreshold: { type: Type.INTEGER, description: "The minimum score to achieve this tier." },
-                    title: { type: Type.STRING, description: "The title for this result tier (e.g., 'Novice', 'Expert')." },
-                    feedback: { type: Type.STRING, description: "Encouraging feedback. Can include placeholders {score} and {total}." }
-                },
-                required: ['scoreThreshold', 'title', 'feedback']
-            }
-        },
-        outcomes: {
-            type: Type.ARRAY,
-            description: "For 'personality' quizzes only. An array of possible personality outcomes.",
-            items: {
-                type: Type.OBJECT,
-                properties: {
-                    id: { type: Type.STRING, description: "A unique identifier for the outcome (e.g., 'strategist')." },
-                    title: { type: Type.STRING, description: "The title of the personality type." },
-                    description: { type: Type.STRING, description: "A detailed description of the personality type." }
-                },
-                required: ['id', 'title', 'description']
-            }
-        }
-    },
-    required: ['quizTitle', 'quizType', 'questions']
-};
-
-
-const getQuizDataGenerationPrompt = (postTitle: string, postContent: string, difficulty: QuizDifficulty): string => {
+// --- IDEA GENERATION ---
+const getIdeaPrompt = (postTitle: string, postContent: string): string => {
     const cleanContent = stripHtml(postContent).substring(0, 8000);
     return `
-    **Persona:** You are a PhD-level curriculum designer and viral engagement strategist. Your work is synonymous with elite, premium quality. You are meticulous, fact-check every detail, and your primary goal is to create an educational tool that is profoundly valuable, accurate, and engaging for the end-user. Mediocrity is not in your vocabulary.
+    **Persona:** You are a seasoned product manager and UX strategist specializing in digital content engagement. You have a reputation for transforming static articles into viral, interactive experiences.
 
-    **Mission:**
-    1.  **Deep Analysis:** Perform a deep, comprehensive analysis of the provided blog post title and content. Identify the most critical concepts, nuanced arguments, and key factual takeaways that a reader should remember.
-    2.  **Determine Optimal Quiz Type:** Based on your expert analysis, decide if a 'knowledge-check' quiz (for factual, educational, or technical content) or a 'personality' quiz (for guides, listicles, or conceptual/typology content) will provide the most value and engagement.
-    3.  **Craft a Masterpiece Quiz:** Generate all necessary data for the chosen quiz type with unparalleled quality.
-        - The quiz must be 100% accurate and fact-checked against the provided content.
-        - For 'knowledge-check', questions must challenge the user to apply knowledge, not just recall facts. Explanations must be insightful, clear, and provide additional value beyond the original text. They should feel like a mini-lesson from an expert.
-        - For 'personality', outcomes must be psychologically sound (within the context of the article), insightful, and avoid generic platitudes. Descriptions should be well-written, relatable, and empower the user.
-    4.  **Adhere to Difficulty:** Ensure the questions and options perfectly match the requested difficulty level: '${difficulty}'. 'Challenging' means requiring synthesis of information or understanding of complex, nuanced concepts. 'Easy' means focusing on the most critical, foundational ideas.
-    5.  **Perfect JSON Output:** Format your entire response as a single, perfectly-formed JSON object, adhering strictly to the provided schema. No extra text, no apologies, no markdown. Just the JSON.
+    **Analysis Task:** Analyze the following blog post.
+    *   **Title:** "${postTitle}"
+    *   **Content:** "${cleanContent}"
 
-    **Analysis Material:**
-    *   **Post Title:** "${postTitle}"
-    *   **Post Content Snippet (first 8000 characters):** "${cleanContent}"
+    **Your Mission:**
+    Suggest three distinct, **elite-level**, interactive HTML tool ideas that would be exceptionally valuable and engaging for this post's reader. The goal is to create a "wow" moment that makes the reader's life easier, offers a unique insight, or helps them apply the post's knowledge instantly.
 
-    Your entire response MUST be only the JSON object.
+    **Creative Direction:**
+    *   **Think Beyond the Obvious:** Avoid simple calculators unless the post is purely about a specific formula. Propose more sophisticated tools like interactive checklists, data visualizers, ROI predictors, comparison sliders, personalized quizzes, or configuration wizards.
+    *   **Deeply Contextual:** Each idea MUST be deeply tailored to the specific nuances of the post's content. A generic idea is a failed idea.
+    *   **Action-Oriented:** The tool should empower the user to *do* something with the information, not just passively consume it.
+
+    **Output Specification:**
+    For each of the three ideas:
+    1.  **title:** A short, compelling, action-oriented title.
+    2.  **description:** A concise, single-sentence description of the tool's value proposition for the user. IMPORTANT: This must be a single line of text with no newline characters.
+    3.  **icon:** Suggest a relevant icon name from this exact list: [calculator, chart, list, idea].
+
+    **Your final response MUST be ONLY a valid JSON object in the format: { "ideas": [{ "title": "...", "description": "...", "icon": "..." }] }**
+    Ensure the JSON is perfectly formed and contains no unescaped control characters. Do not include any explanatory text or markdown.
     `;
 };
 
 
-export async function generateQuizData(state: AppState, postTitle: string, postContent: string, difficulty: QuizDifficulty): Promise<QuizData> {
+export async function suggestToolIdeas(state: AppState, postTitle: string, postContent: string): Promise<ToolIdea[]> {
     const { selectedProvider, apiKeys } = state;
     const apiKey = apiKeys[selectedProvider];
-    const prompt = getQuizDataGenerationPrompt(postTitle, postContent, difficulty);
-    let responseText = '';
+    const prompt = getIdeaPrompt(postTitle, postContent);
+    let responseText = ''; // Used for error reporting
 
     try {
         if (selectedProvider === AiProvider.Gemini) {
@@ -169,95 +111,269 @@ export async function generateQuizData(state: AppState, postTitle: string, postC
             const response = await ai.models.generateContent({
                 model: AI_PROVIDERS.gemini.defaultModel,
                 contents: prompt,
-                config: { responseMimeType: "application/json", responseSchema: GeminiSchema },
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: { ideas: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, description: { type: Type.STRING }, icon: { type: Type.STRING } } } } }
+                    },
+                },
             });
             responseText = response.text;
         } else {
             responseText = await callGenericChatApi(state, prompt, true);
         }
 
+        // Clean the response to ensure it's valid JSON, stripping markdown fences or other text.
         const firstBrace = responseText.indexOf('{');
         const lastBrace = responseText.lastIndexOf('}');
-        if (firstBrace === -1 || lastBrace <= firstBrace) {
+
+        if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
              throw new Error("AI response did not contain a valid JSON object.");
         }
-        const jsonString = responseText.substring(firstBrace, lastBrace + 1);
-        return JSON.parse(jsonString) as QuizData;
+        
+        let jsonString = responseText.substring(firstBrace, lastBrace + 1);
 
-    } catch (error) {
-        console.error("AI API error in generateQuizData:", error);
-        if (error instanceof SyntaxError) {
-             throw new Error(`Failed to parse AI response as JSON. Response snippet: ${responseText.substring(0, 150)}...`);
+        // Sanitize the string to remove control characters like newlines which can break JSON.parse.
+        jsonString = jsonString.replace(/[\r\n\t]/g, ' ');
+
+        const result = JSON.parse(jsonString);
+        
+        // Robustly find the array of ideas, regardless of the key name (e.g., "ideas", " ", "tools").
+        const ideasArray = Object.values(result).find(value => Array.isArray(value)) as any[];
+
+        if (ideasArray) {
+            // Filter to ensure the items in the array match the ToolIdea structure.
+            const validIdeas = ideasArray.filter(item =>
+                typeof item === 'object' && item !== null &&
+                'title' in item && 'description' in item && 'icon' in item
+            );
+
+            if (validIdeas.length > 0) {
+                return validIdeas.slice(0, 3);
+            }
         }
-        throw new Error(`Failed to get quiz data from ${AI_PROVIDERS[selectedProvider].name}. Check console for details.`);
+        
+        throw new Error("AI did not return valid tool ideas in the expected format.");
+    } catch (error) {
+        console.error("AI API error in suggestToolIdeas:", error);
+         if (error instanceof SyntaxError) {
+             throw new Error(`Failed to parse AI response as JSON. The model may have returned an invalid format. Response snippet: ${responseText.substring(0, 150)}...`);
+        }
+        throw new Error(`Failed to get suggestions from ${AI_PROVIDERS[selectedProvider].name}. Check the console for details.`);
     }
 }
 
-const getQuizRegenerationPrompt = (postTitle: string, postContent: string, previousQuizData: QuizData, userFeedback: string): string => {
-    const cleanContent = stripHtml(postContent).substring(0, 8000);
-    return `
-    **Persona:** You are a PhD-level curriculum designer and viral engagement strategist, now acting as a senior editor refining a draft. Your commitment to elite quality is unwavering.
-
-    **Mission:**
-    1.  **Review Previous Version:** You have already generated the quiz JSON provided below.
-    2.  **Internalize Feedback:** The user has provided specific creative direction. You must deeply understand the user's intent and intelligently revise the quiz content to perfectly align with this feedback, elevating it to a new level of quality.
-    3.  **Maintain Structural Integrity:** The quiz type and overall structure should remain the same unless the feedback explicitly requests a fundamental change. Your focus is on a surgical, high-impact revision of the content (questions, options, explanations, outcomes).
-    4.  **Perfect JSON Output:** Format your entire revised response as a single, perfectly-formed JSON object, adhering strictly to the original schema. No extra text, no comments, no markdown.
-
-    **Original Blog Post Context:**
-    *   **Post Title:** "${postTitle}"
-    *   **Post Content Snippet (first 8000 characters):** "${cleanContent}"
-
-    **Previous Quiz JSON (The Draft):**
-    \`\`\`json
-    ${JSON.stringify(previousQuizData, null, 2)}
-    \`\`\`
-
-    **User's Creative Direction (The Mandate):**
-    "${userFeedback}"
-
-    Your entire response MUST be only the revised JSON object.
-    `;
+// --- NEW UTILITY FUNCTION for HTML Generation ---
+function hexToHsl(hex: string): { h: number, s: number, l: number } {
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+        r = parseInt(hex[1] + hex[1], 16);
+        g = parseInt(hex[2] + hex[2], 16);
+        b = parseInt(hex[3] + hex[3], 16);
+    } else if (hex.length === 7) {
+        r = parseInt(hex[1] + hex[2], 16);
+        g = parseInt(hex[3] + hex[4], 16);
+        b = parseInt(hex[5] + hex[6], 16);
+    }
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
-export async function regenerateQuizData(state: AppState, postTitle: string, postContent: string, previousQuizData: QuizData, userFeedback: string): Promise<QuizData> {
-    const { selectedProvider, apiKeys } = state;
-    const apiKey = apiKeys[selectedProvider];
-    const prompt = getQuizRegenerationPrompt(postTitle, postContent, previousQuizData, userFeedback);
-    let responseText = '';
+
+// --- HTML GENERATION ---
+const getHtmlGenerationPrompt = (postTitle: string, postContent: string, idea: ToolIdea, themeColor: string): string => {
+    const cleanContent = stripHtml(postContent).substring(0, 4000);
+    const themeHsl = hexToHsl(themeColor);
+    const themeHslString = `${themeHsl.h} ${themeHsl.s}% ${themeHsl.l}%`;
+    const themeHslHoverString = `${themeHsl.h} ${themeHsl.s}% ${Math.max(0, themeHsl.l - 8)}%`; // Darker for hover
+    const uniqueId = `cforge-tool-${Date.now()}`;
+
+    return `
+    **Persona:** You are a lead frontend engineer at a company like Stripe or Vercel, known for creating interfaces that are the gold standard of the industry. Your work is defined by its precision, performance, and an obsessive focus on user experience. You will now create an interactive tool that reflects this elite standard.
+
+    **Mission:** Generate a single, 100% self-contained, production-ready HTML snippet. This snippet will be injected directly onto a live webpage, so it must be completely isolated and well-behaved. The final output must be **ONLY the raw HTML code** and nothing else.
+
+    **Tool Request:**
+    *   **Blog Post Title:** "${postTitle}"
+    *   **Tool Idea:** "${idea.title}"
+    *   **Description:** "${idea.description}"
+    *   **Content Context (for data and relevance):** "${cleanContent}"
+    *   **Primary Accent Color (HSL):** ${themeHslString}
+
+    **Design & UX Philosophy (Non-negotiable):**
+    1.  **Understated Elegance:** The design must be modern, premium, and clean. Use a refined color palette based on Tailwind's \`slate\` colors for text and backgrounds. Create depth with subtle background gradients (e.g., \`bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900\`) and fine-keyed borders (\`border-slate-200 dark:border-slate-700\`). Use generous, consistent spacing.
+    2.  **Delightful Micro-interactions:** The tool must feel responsive. Use smooth transitions (\`transition-all\`, \`duration-300\`) for ALL state changes. When results are calculated, animate them in with a subtle fade and scale effect. Buttons must have clear hover and active states.
+    3.  **Perfect Dark Mode:** Every element MUST be perfectly styled for both light and dark themes using Tailwind's \`dark:\` variants.
+    4.  **Bulletproof Responsiveness:** The layout must be flawless on all screen sizes, from a 320px mobile viewport to a 4K desktop.
+    5.  **Exemplary Accessibility (WCAG AA):** Use semantic HTML (<label>, <input>, <button>). Use ARIA attributes where necessary (\`aria-live="polite"\` for dynamic result regions). Ensure all interactive elements have highly visible focus states.
+
+    **Technical Mandates (Strictly Enforced):**
+
+    1.  **RAW HTML ONLY:** Your response MUST start with \`<script src="https://cdn.tailwindcss.com"></script>\` and end with the final closing \`</script>\` tag of your logic. Do NOT include Markdown fences (\`\`\`html\`), \`<html>\`, \`<head>\`, or \`<body>\` tags.
+    
+    2.  **STRUCTURE & STYLING:**
+        *   The snippet must start with the Tailwind CDN script: \`<script src="https://cdn.tailwindcss.com"></script>\`.
+        *   The root element of your visible UI MUST have the ID \`${uniqueId}\`.
+        *   Immediately after, include a single \`<style>\` block.
+        *   Inside this \`<style>\` block, define CSS variables for theming on the root element's ID selector:
+            \`#${uniqueId} {
+                --accent-color: ${themeHslString};
+                --accent-color-hover: ${themeHslHoverString};
+                --accent-color-focus-ring: ${themeHsl.h} ${themeHsl.s}% ${themeHsl.l + 20}%;
+             }\`
+            Then, use these variables in your Tailwind classes for buttons and focus rings, e.g., \`bg-[hsl(var(--accent-color))] hover:bg-[hsl(var(--accent-color-hover))] focus:ring-[hsl(var(--accent-color-focus-ring))]\`.
+
+    3.  **HTML:**
+        *   Use semantic HTML. Use \`<label>\`s for all form inputs.
+
+    4.  **JAVASCRIPT:**
+        *   Place all logic in a single \`<script>\` tag at the very end of the snippet.
+        *   Wrap your ENTIRE script logic in a DOMContentLoaded event listener to ensure the HTML is ready: \`document.addEventListener('DOMContentLoaded', function() { ... });\`
+        *   Inside, get the root container: \`const toolContainer = document.getElementById('${uniqueId}'); if (!toolContainer) return;\`.
+        *   All subsequent DOM queries MUST be scoped to that container. E.g., \`const button = toolContainer.querySelector('button');\`. This is CRITICAL for isolation.
+        *   **NO INLINE EVENT HANDLERS** (e.g., no \`onclick="..."\`). Use \`addEventListener\` to wire up events.
+        *   Structure your code with clear functions. For complex tools, use a simple state management pattern (e.g., a state object and a \`render()\` function).
+        *   **Gracefully handle all edge cases.** Sanitize user inputs, prevent errors (like division by zero), and provide clear, helpful feedback for invalid actions without breaking the layout or using ugly \`alert()\` boxes.
+
+    Now, based on these exacting standards, generate the complete, premium HTML snippet for the "${idea.title}" tool.
+    `;
+};
+
+
+// --- "SURGICAL STRIKE" SHORTCODE INSERTION LOGIC ---
+
+/**
+ * Injects unique comment markers between top-level block elements in an HTML string.
+ */
+function addInsertionMarkers(html: string): string {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const body = doc.body;
+    const children = Array.from(body.children);
+    
+    // Don't add a marker if the content is empty or just whitespace
+    if (body.textContent?.trim() === '') {
+        const marker = doc.createComment(` CFORGE_MARKER_1 `);
+        body.appendChild(marker);
+        return body.innerHTML;
+    }
+
+    const firstMarker = doc.createComment(` CFORGE_MARKER_1 `);
+    body.insertBefore(firstMarker, body.firstChild);
+    
+    let counter = 2;
+    children.forEach(child => {
+        const marker = doc.createComment(` CFORGE_MARKER_${counter++} `);
+        child.parentNode?.insertBefore(marker, child.nextSibling);
+    });
+    
+    return body.innerHTML;
+}
+
+
+const getMarkerToReplacePrompt = (markedUpHtml: string, toolTitle: string, toolDescription: string): string => {
+  return `
+**Persona:** You are an elite web developer and UX expert with an unparalleled understanding of content flow and reader engagement. Your task is to find the best placement for an interactive tool within a blog post.
+
+**Mission:**
+I will provide you with the HTML of a blog post containing special insertion markers (e.g., \`<!-- CFORGE_MARKER_1 -->\`). I will also provide the title and description of the tool to be inserted.
+
+1.  **Analyze the Context:** Read the blog post's HTML to understand its structure, topic, and flow.
+2.  **Analyze the Tool:** The tool to be inserted is titled "${toolTitle}" and is described as: "${toolDescription}".
+3.  **Identify the Optimal Location:** Determine the single best marker to replace with this tool. The ideal location is where the tool provides maximum value and feels most natural to the reader. Consider placing it after a relevant introduction or a section that sets up the problem the tool solves.
+4.  **Return the Marker ID:** Your response MUST BE a valid JSON object containing only the ID of the chosen marker.
+
+**Example Response:**
+{
+  "markerId": "CFORGE_MARKER_5"
+}
+
+**Critical Rules:**
+*   Your output must be ONLY the JSON object. Do not include any explanations, introductory text, or markdown code fences.
+*   The value of "markerId" MUST exactly match one of the markers in the provided HTML (e.g., "CFORGE_MARKER_1", "CFORGE_MARKER_2", etc.).
+
+---
+**Blog Post HTML with Insertion Markers:**
+${markedUpHtml}
+---
+
+Now, provide the JSON object specifying the best marker to replace.
+  `;
+};
+
+export async function insertShortcodeIntoContent(state: AppState, postContent: string, shortcode: string): Promise<string> {
+    const markedUpHtml = addInsertionMarkers(postContent);
+    
+    // Truncate the HTML for the prompt to avoid token limits, while keeping the structure.
+    const promptHtml = markedUpHtml.length > 12000 ? markedUpHtml.substring(0, 12000) + '...' : markedUpHtml;
+    const prompt = getMarkerToReplacePrompt(promptHtml, state.selectedIdea!.title, state.selectedIdea!.description);
+
+    let markerToReplace: string | null = null;
+    let responseText: string = '';
 
     try {
-        if (selectedProvider === AiProvider.Gemini) {
-            const ai = new GoogleGenAI({ apiKey });
+        if (state.selectedProvider === AiProvider.Gemini) {
+            const ai = new GoogleGenAI({ apiKey: state.apiKeys.gemini });
             const response = await ai.models.generateContent({
                 model: AI_PROVIDERS.gemini.defaultModel,
                 contents: prompt,
-                config: { responseMimeType: "application/json", responseSchema: GeminiSchema },
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: { markerId: { type: Type.STRING, description: "The ID of the marker to replace, e.g., CFORGE_MARKER_5" } }
+                    }
+                }
             });
             responseText = response.text;
         } else {
-             responseText = await callGenericChatApi(state, prompt, true);
+            responseText = await callGenericChatApi(state, prompt, true, 256);
         }
-
+        
         const firstBrace = responseText.indexOf('{');
         const lastBrace = responseText.lastIndexOf('}');
-        if (firstBrace === -1 || lastBrace <= firstBrace) {
-             throw new Error("AI response did not contain a valid JSON object for regeneration.");
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+            const jsonString = responseText.substring(firstBrace, lastBrace + 1);
+            const result = JSON.parse(jsonString);
+            if (result.markerId && typeof result.markerId === 'string' && result.markerId.startsWith('CFORGE_MARKER_')) {
+                markerToReplace = result.markerId;
+            }
         }
-        const jsonString = responseText.substring(firstBrace, lastBrace + 1);
-        return JSON.parse(jsonString) as QuizData;
-
     } catch (error) {
-        console.error("AI API error in regenerateQuizData:", error);
-        if (error instanceof SyntaxError) {
-             throw new Error(`Failed to parse AI response as JSON. Response snippet: ${responseText.substring(0, 150)}...`);
-        }
-        throw new Error(`Failed to get quiz data from ${AI_PROVIDERS[selectedProvider].name}. Check console for details.`);
+        console.error("AI API error during marker selection:", error);
     }
+
+    let newContent: string;
+    if (markerToReplace) {
+        const markerComment = `<!-- ${markerToReplace.trim()} -->`;
+        if (markedUpHtml.includes(markerComment)) {
+            newContent = markedUpHtml.replace(markerComment, `\n\n${shortcode}\n\n`);
+        } else {
+            console.warn(`AI selected marker "${markerToReplace}" but it was not found. Appending shortcode.`);
+            newContent = postContent + `\n\n${shortcode}\n\n`;
+        }
+    } else {
+        console.warn("AI failed to return a valid marker. Appending shortcode.");
+        newContent = postContent + `\n\n${shortcode}\n\n`;
+    }
+    
+    // Final cleanup: Remove all other markers from the final result.
+    return newContent.replace(/<!--\s*CFORGE_MARKER_\d+\s*-->/g, '');
 }
 
-
-// --- GENERIC API HANDLER for non-Gemini models ---
+// --- GENERIC API HANDLER for OpenAI, Anthropic, OpenRouter ---
 async function callGenericChatApi(state: AppState, prompt: string, isJsonMode: boolean, maxTokens: number = 4000): Promise<string> {
     const { selectedProvider, apiKeys, openRouterModel } = state;
     const apiKey = apiKeys[selectedProvider];
@@ -305,224 +421,102 @@ async function callGenericChatApi(state: AppState, prompt: string, isJsonMode: b
     }
 }
 
+// --- STREAMING IMPLEMENTATIONS ---
 
-// --- STATIC HTML GENERATION from QuizData ---
-function hexToHsl(hex: string): { h: number, s: number, l: number } {
-    let r = 0, g = 0, b = 0;
-    if (hex.length === 4) {
-        r = parseInt(hex[1] + hex[1], 16); g = parseInt(hex[2] + hex[2], 16); b = parseInt(hex[3] + hex[3], 16);
-    } else if (hex.length === 7) {
-        r = parseInt(hex.substring(1, 3), 16); g = parseInt(hex.substring(3, 5), 16); b = parseInt(hex.substring(5, 7), 16);
-    }
-    r /= 255; g /= 255; b /= 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    let h = 0, s = 0, l = (max + min) / 2;
-    if (max !== min) {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        switch (max) {
-            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-            case g: h = (b - r) / d + 2; break;
-            case b: h = (r - g) / d + 4; break;
+async function* streamSse(stream: ReadableStream<Uint8Array>, provider: 'openai' | 'anthropic' | 'openrouter'): AsyncGenerator<string> {
+    const reader = stream.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = '';
+
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+            break;
         }
-        h /= 6;
-    }
-    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
-}
 
-export function renderQuizToStaticHtml(quizData: QuizData, themeColor: string): string {
-    const uniqueId = `qf-quiz-${Date.now()}`;
-    const themeHsl = hexToHsl(themeColor);
+        buffer += value;
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep the last, possibly incomplete line
 
-    const css = `
-#${uniqueId} {
-    --accent-color: ${themeHsl.h} ${themeHsl.s}% ${themeHsl.l}%;
-    --accent-color-hover: ${themeHsl.h} ${themeHsl.s}% ${Math.max(0, themeHsl.l - 8)}%;
-    --accent-color-light: ${themeHsl.h} ${themeHsl.s}% ${Math.min(100, themeHsl.l + 30)}%;
-    --qf-bg: #ffffff;
-    --qf-bg-alt: #f8fafc;
-    --qf-text-primary: #1e293b;
-    --qf-text-secondary: #64748b;
-    --qf-border-color: #e2e8f0;
-    --qf-card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-    line-height: 1.5;
-    background: var(--qf-bg);
-    border: 1px solid var(--qf-border-color);
-    box-shadow: var(--qf-card-shadow);
-    border-radius: 1rem;
-    overflow: hidden;
-}
-@media (prefers-color-scheme: dark) {
-    #${uniqueId} {
-        --qf-bg: #1e293b;
-        --qf-bg-alt: #0f172a;
-        --qf-text-primary: #f1f5f9;
-        --qf-text-secondary: #94a3b8;
-        --qf-border-color: #334155;
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                const data = line.substring(6);
+                if (data.trim() === '[DONE]') {
+                    return;
+                }
+                try {
+                    const parsed = JSON.parse(data);
+                    let chunk = '';
+                    if (provider === 'anthropic') {
+                        if (parsed.type === 'content_block_delta') {
+                            chunk = parsed.delta.text;
+                        }
+                    } else { // OpenAI and OpenRouter
+                        chunk = parsed.choices[0]?.delta?.content || '';
+                    }
+                    if (chunk) {
+                        yield chunk;
+                    }
+                } catch (e) {
+                    // Ignore parsing errors for non-json lines
+                }
+            }
+        }
     }
 }
-#${uniqueId} .qf-hidden { display: none !important; }
-#${uniqueId} .qf-option-btn { transition: background-color 0.2s, border-color 0.2s, transform 0.1s, box-shadow 0.2s; }
-#${uniqueId} .qf-option-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--qf-card-shadow); }
-#${uniqueId} .qf-fade-in { animation: qf-fade-in 0.5s ease-out; }
-#${uniqueId} .qf-progress-bar { transition: width 0.5s ease-in-out; }
-#${uniqueId} .qf-result-score-circle { transition: stroke-dashoffset 1s ease-out; }
-@keyframes qf-fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-`;
 
-    const js = `
-document.addEventListener('DOMContentLoaded', function() {
-    const quizContainer = document.getElementById('${uniqueId}');
-    if (!quizContainer) return;
-    
-    const quizData = ${JSON.stringify(quizData)};
-    const questionsContainer = quizContainer.querySelector('.qf-questions-container');
-    const resultsContainer = quizContainer.querySelector('.qf-results-container');
-    const restartBtn = quizContainer.querySelector('.qf-restart-btn');
 
-    let currentQuestionIndex = 0;
-    let score = 0;
-    let personalityScores = {};
+export async function* generateHtmlSnippetStream(state: AppState, postTitle: string, postContent: string, idea: ToolIdea, themeColor: string): AsyncGenerator<string> {
+    const { selectedProvider, apiKeys, openRouterModel } = state;
+    const apiKey = apiKeys[selectedProvider];
+    const prompt = getHtmlGenerationPrompt(postTitle, postContent, idea, themeColor);
 
-    function showResults() {
-        questionsContainer.classList.add('qf-hidden');
-        resultsContainer.classList.remove('qf-hidden');
-        resultsContainer.classList.add('qf-fade-in');
+    try {
+        if (selectedProvider === AiProvider.Gemini) {
+            const ai = new GoogleGenAI({ apiKey });
+            const stream = await ai.models.generateContentStream({
+                model: AI_PROVIDERS.gemini.defaultModel,
+                contents: prompt,
+            });
+            for await (const chunk of stream) {
+                yield chunk.text;
+            }
+        } else {
+            let url: string;
+            let headers: Record<string, string>;
+            let body: Record<string, any>;
 
-        const resultTitleEl = resultsContainer.querySelector('.qf-result-title');
-        const resultDescEl = resultsContainer.querySelector('.qf-result-desc');
-        
-        if (quizData.quizType === 'knowledge-check') {
-            const finalTier = quizData.results.slice().sort((a,b) => b.scoreThreshold - a.scoreThreshold)
-                .find(tier => score >= tier.scoreThreshold);
+            const model = selectedProvider === AiProvider.OpenRouter ? openRouterModel : AI_PROVIDERS[selectedProvider].defaultModel;
+
+            switch (selectedProvider) {
+                case AiProvider.OpenAI:
+                    url = 'https://api.openai.com/v1/chat/completions';
+                    headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+                    body = { model, messages: [{ role: 'user', content: prompt }], temperature: 0.5, max_tokens: 4000, stream: true };
+                    break;
+                case AiProvider.Anthropic:
+                    url = 'https://api.anthropic.com/v1/messages';
+                    headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
+                    body = { model, messages: [{ role: 'user', content: prompt }], temperature: 0.5, max_tokens: 4000, stream: true };
+                    break;
+                case AiProvider.OpenRouter:
+                    url = 'https://openrouter.ai/api/v1/chat/completions';
+                    headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+                    body = { model, messages: [{ role: 'user', content: prompt }], temperature: 0.5, stream: true };
+                    break;
+                default:
+                    throw new Error('Unsupported provider for streaming');
+            }
+
+            const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+            if (!response.ok || !response.body) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorData?.error?.message || 'Unknown error'}`);
+            }
             
-            resultTitleEl.textContent = finalTier?.title || 'Quiz Complete!';
-            resultDescEl.textContent = finalTier?.feedback.replace('{score}', score).replace('{total}', quizData.questions.length) 
-                || \`You scored \${score} out of \${quizData.questions.length}.\`;
-
-            const scoreCircle = resultsContainer.querySelector('.qf-result-score-circle-progress');
-            const scoreText = resultsContainer.querySelector('.qf-result-score-text');
-            const percentage = quizData.questions.length > 0 ? score / quizData.questions.length : 0;
-            const circumference = 2 * Math.PI * 45;
-            scoreCircle.style.strokeDashoffset = circumference - (percentage * circumference);
-            scoreText.textContent = Math.round(percentage * 100) + '%';
-        } else {
-            const winnerId = Object.entries(personalityScores).sort((a, b) => b[1] - a[1])[0]?.[0];
-            const finalOutcome = quizData.outcomes.find(o => o.id === winnerId);
-            resultTitleEl.textContent = finalOutcome?.title || 'Results Are In!';
-            resultDescEl.textContent = finalOutcome?.description || 'You have a unique personality type.';
-            resultsContainer.querySelector('.qf-result-score-wrapper').classList.add('qf-hidden');
+            yield* streamSse(response.body, selectedProvider);
         }
+    } catch (error) {
+        console.error("AI API error in generateHtmlSnippetStream:", error);
+        throw new Error(`Failed to generate HTML from ${AI_PROVIDERS[selectedProvider].name}.`);
     }
-
-    function renderQuestion(index) {
-        const question = quizData.questions[index];
-        const isKnowledgeCheck = quizData.quizType === 'knowledge-check';
-        const progressPercentage = quizData.questions.length > 0 ? ((index + 1) / quizData.questions.length) * 100 : 0;
-        
-        let optionsHtml = '';
-        question.options.forEach((option, i) => {
-            const optionText = isKnowledgeCheck ? option : option.text;
-            optionsHtml += \`<button class="qf-option-btn w-full text-left p-4 rounded-lg border-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 hover:border-[hsl(var(--accent-color))] hover:bg-[hsl(var(--accent-color)_/_0.05)] font-medium" data-index="\${i}">\${optionText}</button>\`;
-        });
-
-        questionsContainer.innerHTML = \`
-            <div class="qf-fade-in">
-                <div class="w-full bg-slate-200 dark:bg-slate-700/50 rounded-full h-2.5">
-                    <div class="qf-progress-bar bg-gradient-to-r from-blue-500 to-purple-500 h-2.5 rounded-full" style="width: \${(index / quizData.questions.length) * 100}%"></div>
-                </div>
-                <div class="text-sm text-slate-500 dark:text-slate-400 my-4 text-center">Question \${index + 1} of \${quizData.questions.length}</div>
-                <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6 text-center">\${question.questionText}</h3>
-                <div class="space-y-3">\${optionsHtml}</div>
-                <div class="qf-feedback-container mt-4"></div>
-                <div class="mt-6 text-right">
-                    <button class="qf-next-btn qf-hidden px-5 py-2.5 rounded-md font-semibold text-white bg-[hsl(var(--accent-color))] hover:bg-[hsl(var(--accent-color-hover))]">\${index < quizData.questions.length - 1 ? 'Next Question' : 'See Results'}</button>
-                </div>
-            </div>
-        \`;
-         setTimeout(() => {
-            const bar = questionsContainer.querySelector('.qf-progress-bar');
-            if(bar) bar.style.width = progressPercentage + '%';
-        }, 100);
-    }
-
-    function handleOptionClick(e) {
-        if (!e.target.closest('.qf-option-btn')) return;
-        const button = e.target.closest('.qf-option-btn');
-        const selectedIndex = parseInt(button.dataset.index, 10);
-        const question = quizData.questions[currentQuestionIndex];
-        const isKnowledgeCheck = quizData.quizType === 'knowledge-check';
-        
-        const optionButtons = questionsContainer.querySelectorAll('.qf-option-btn');
-        optionButtons.forEach(btn => btn.disabled = true);
-        
-        if (isKnowledgeCheck) {
-            const typedQuestion = question;
-            if (selectedIndex === typedQuestion.correctAnswerIndex) {
-                score++;
-                button.classList.add('!bg-green-100', 'dark:!bg-green-900/50', '!border-green-500', '!text-green-800', 'dark:!text-green-200');
-            } else {
-                button.classList.add('!bg-red-100', 'dark:!bg-red-900/50', '!border-red-500', '!text-red-800', 'dark:!text-red-300');
-                optionButtons[typedQuestion.correctAnswerIndex]?.classList.add('!bg-green-100', 'dark:!bg-green-900/50', '!border-green-500', '!text-green-800', 'dark:!text-green-200');
-            }
-            const feedbackContainer = questionsContainer.querySelector('.qf-feedback-container');
-            if (typedQuestion.explanation && feedbackContainer) {
-                feedbackContainer.innerHTML = \`<div class="p-4 bg-slate-100 dark:bg-slate-900/50 rounded-md qf-fade-in"><p class="font-bold text-slate-800 dark:text-slate-200">Explanation</p><p class="text-sm text-slate-600 dark:text-slate-300 mt-1">\${typedQuestion.explanation}</p></div>\`;
-            }
-        } else {
-            const typedQuestion = question;
-            const pointsFor = typedQuestion.options[selectedIndex].pointsFor;
-            personalityScores[pointsFor] = (personalityScores[pointsFor] || 0) + 1;
-            button.classList.add('!border-[hsl(var(--accent-color))]', '!bg-[hsl(var(--accent-color)_/_0.1)]', 'ring-2', 'ring-[hsl(var(--accent-color))]');
-        }
-        
-        questionsContainer.querySelector('.qf-next-btn').classList.remove('qf-hidden');
-    }
-
-    function handleNextClick(e) {
-        if (!e.target.classList.contains('qf-next-btn')) return;
-        currentQuestionIndex++;
-        if (currentQuestionIndex < quizData.questions.length) {
-            renderQuestion(currentQuestionIndex);
-        } else { showResults(); }
-    }
-    
-    function restartQuiz() {
-        currentQuestionIndex = 0; score = 0; personalityScores = {};
-        resultsContainer.classList.add('qf-hidden');
-        questionsContainer.classList.remove('qf-hidden');
-        renderQuestion(0);
-    }
-
-    questionsContainer.addEventListener('click', e => { handleOptionClick(e); handleNextClick(e); });
-    restartBtn.addEventListener('click', restartQuiz);
-    renderQuestion(0);
-});
-`;
-
-    const html = `
-<script src="https://cdn.tailwindcss.com"></script>
-<style>${css}</style>
-<div id="${uniqueId}" class="w-full max-w-2xl mx-auto my-8">
-    <div class="p-6">
-        <h2 class="text-2xl font-extrabold text-center text-slate-900 dark:text-slate-100">${quizData.quizTitle}</h2>
-    </div>
-    <div class="qf-questions-container p-6 pt-0"></div>
-    <div class="qf-results-container qf-hidden text-center p-6">
-        <div class="qf-result-score-wrapper relative w-32 h-32 mx-auto mb-4">
-            <svg class="w-full h-full" viewBox="0 0 100 100">
-                <circle class="text-slate-200 dark:text-slate-700" stroke-width="8" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
-                <circle class="qf-result-score-circle-progress text-[hsl(var(--accent-color))]" stroke-width="8" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" stroke-linecap="round" transform="rotate(-90 50 50)" style="stroke-dasharray: 282.7; stroke-dashoffset: 282.7;"></circle>
-            </svg>
-            <div class="qf-result-score-text absolute inset-0 flex items-center justify-center text-3xl font-bold text-slate-800 dark:text-slate-100"></div>
-        </div>
-        <h3 class="qf-result-title text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2"></h3>
-        <p class="qf-result-desc text-slate-600 dark:text-slate-300 mb-6"></p>
-        <button class="qf-restart-btn px-6 py-3 rounded-md font-semibold text-white bg-[hsl(var(--accent-color))] hover:bg-[hsl(var(--accent-color-hover))]">Restart Quiz</button>
-    </div>
-</div>
-<script type="text/javascript">${js}</script>
-`;
-    return html;
 }

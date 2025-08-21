@@ -10,9 +10,9 @@ import ApiConfiguration from './ApiConfiguration';
 import { Card } from './common/Card';
 import { ArrowRightIcon } from './icons/ArrowRightIcon';
 import { LightbulbIcon } from './icons/LightbulbIcon';
-import { QuizIcon, TrophyIcon } from './icons/ToolIcons';
+import { ChartIcon } from './icons/ToolIcons';
+import { CheckIcon } from './icons/CheckIcon';
 import SetupInstructions from './SetupInstructions';
-import { motion } from 'framer-motion';
 
 const ResourceLink: React.FC<{ title: string; url: string }> = ({ title, url }) => (
   <a href={url} target="_blank" rel="noopener noreferrer" className="block text-left no-underline group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 rounded-xl">
@@ -61,36 +61,24 @@ export default function Step1Configure(): React.ReactNode {
     if (!isApiKeyValid) return;
     connectToWordPress({ url, username, appPassword });
   };
-  
-  const FADE_IN_VARIANTS = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0 },
-  };
-
 
   if (state.setupRequired) {
     return <SetupInstructions onRetryConnection={handleSubmit} />;
   }
 
   return (
-    <motion.div 
-        initial="hidden"
-        animate="visible"
-        variants={FADE_IN_VARIANTS}
-        transition={{ duration: 0.5 }}
-        className="space-y-10 sm:space-y-16"
-    >
+    <div className="animate-fade-in space-y-10 sm:space-y-16">
        {/* Unique Features */}
       <section className="text-center">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-           <FeatureCard icon={<QuizIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />} title="In-Depth Knowledge Quizzes">
-              Reinforce learning with AI-generated quizzes that include detailed explanations for every answer.
+           <FeatureCard icon={<LightbulbIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />} title="Exclusive AI Idea Engine">
+              Unlike others, our AI analyzes your post to suggest unique, context-aware tools that competitors can't replicate.
            </FeatureCard>
-           <FeatureCard icon={<TrophyIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />} title="Dynamic Personality Quizzes">
-              Create engaging "What type are you?" style quizzes that captivate and segment your audience.
+           <FeatureCard icon={<CheckIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />} title="1-Click WordPress Insertion">
+              No more messy shortcodes. We inject flawless, responsive code perfectly into your post with a single click.
            </FeatureCard>
-           <FeatureCard icon={<LightbulbIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />} title="Context-Aware Generation">
-             Our AI analyzes your post to generate relevant, insightful quiz questions that test true understanding.
+           <FeatureCard icon={<ChartIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />} title="Industry-Leading SEO Boost">
+             Turn passive readers into active users. Increase time-on-page and signal topical authority to Google.
            </FeatureCard>
         </div>
       </section>
@@ -98,19 +86,19 @@ export default function Step1Configure(): React.ReactNode {
        {/* Social Proof */}
       <section>
         <h2 className="text-center text-xl font-bold text-slate-800 dark:text-slate-100 mb-6">
-          Trusted by Professional Content Creators
+          Trusted by Bloggers Who Lead
         </h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
           <Card className="!p-5 bg-white dark:bg-slate-800/80">
             <blockquote className="text-slate-600 dark:text-slate-300">
-              <p>"The answer explanations are a game-changer. My readers on my tutorial site now spend twice as long on the page, and the feedback has been incredible. It's an educational tool, not just a quiz."</p>
-              <footer className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-100">- Alex G., Founder of CodeTutor Pro</footer>
+              <p>"ContentForge is a game-changer. I added a calculator to a finance post, and my engagement time doubled overnight. My competitors are still just writing paragraphs."</p>
+              <footer className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-100">- Sarah J., Niche Site Owner</footer>
             </blockquote>
           </Card>
           <Card className="!p-5 bg-white dark:bg-slate-800/80">
             <blockquote className="text-slate-600 dark:text-slate-300">
-              <p>"I created a 'What's Your Marketing Style?' personality quiz in five minutes. It's now the biggest driver for my email list. QuizForge AI is leagues ahead of anything else I've tried."</p>
-              <footer className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-100">- Maria R., Digital Strategist</footer>
+              <p>"I'm not a coder, but now I can create professional interactive tools in minutes. It's the only tool that truly understands my content and suggests relevant enhancements."</p>
+              <footer className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-100">- Mark T., Affiliate Blogger</footer>
             </blockquote>
           </Card>
         </div>
@@ -228,6 +216,6 @@ export default function Step1Configure(): React.ReactNode {
           ))}
         </div>
       </section>
-    </motion.div>
+    </div>
   );
 }

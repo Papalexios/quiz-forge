@@ -1,13 +1,12 @@
+
 import React from 'react';
 import { LightbulbIcon } from './LightbulbIcon';
-import { QuizIcon, TrophyIcon, ListIcon } from './ToolIcons';
-import { CheckIcon } from './CheckIcon';
+import { CalculatorIcon, ChartIcon, ListIcon } from './ToolIcons';
 
 const iconMap: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
-  quiz: QuizIcon,
-  trophy: TrophyIcon,
+  calculator: CalculatorIcon,
+  chart: ChartIcon,
   list: ListIcon,
-  checkmark: CheckIcon,
   idea: LightbulbIcon,
 };
 
