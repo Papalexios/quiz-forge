@@ -10,7 +10,7 @@ import { Button } from './components/common/Button';
 import { SparklesIcon } from './components/icons/SparklesIcon';
 import ThemeToggle from './components/ThemeToggle';
 import { Logo } from './components/Logo';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion/dist/es/index.js';
 
 
 export default function App(): React.ReactNode {
@@ -68,10 +68,10 @@ export default function App(): React.ReactNode {
           >
             <div className="text-center my-8">
               <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
-                AI-Powered Quizzes. PhD-Level Quality. Unrivaled Engagement.
+                Generate PhD-Caliber Quizzes. Build Unmatched Authority.
               </h2>
               <p className="mt-4 max-w-3xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-slate-400">
-                Effortlessly transform any blog post into a premium, interactive experience. Our AI, trained as an expert curriculum designer, generates fact-checked, contextually-aware quizzes that captivate your audience, deepen their understanding with insightful explanations, and dramatically increase on-page time. Elevate your content from static text to an <span className="font-bold text-slate-800 dark:text-slate-200">authoritative educational tool</span> that builds loyalty and commands attention.
+                Our AI, engineered with the precision of a curriculum designer, instantly transforms any article into a premium, interactive educational tool. Captivate your audience with fact-checked quizzes, deepen understanding with expert explanations, and convert your content from text into an <span className="font-bold text-slate-800 dark:text-slate-200">authoritative experience</span> that commands loyalty and engagement.
               </p>
             </div>
 
@@ -99,7 +99,7 @@ export default function App(): React.ReactNode {
             key="stepper-main"
           >
             <Stepper currentStep={state.currentStep} />
-            <div className="mt-8 bg-white/70 dark:bg-slate-800/50 rounded-2xl shadow-2xl shadow-slate-200/50 dark:shadow-black/20 p-4 sm:p-10 border border-slate-200/80 dark:border-slate-700/60 backdrop-blur-xl min-h-[calc(100vh-240px)] sm:min-h-[650px]">
+            <div className="mt-8 bg-white/60 dark:bg-slate-800/60 rounded-2xl shadow-2xl shadow-slate-300/60 dark:shadow-black/30 p-4 sm:p-10 border border-slate-200/60 dark:border-slate-700/50 backdrop-blur-2xl">
                 {renderStepContent()}
             </div>
           </motion.div>

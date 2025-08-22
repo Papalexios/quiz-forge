@@ -15,8 +15,8 @@ export const Button: React.FC<ButtonProps> = ({ children, className = '', varian
   };
 
   const variantClasses = {
-    primary: 'border-transparent text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
-    secondary: 'border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-blue-500',
+    primary: 'text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:ring-purple-500/50 dark:focus:ring-purple-400/50 transform hover:scale-[1.02] border-transparent',
+    secondary: 'border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md hover:bg-slate-50 dark:hover:bg-slate-700/90 focus:ring-blue-500',
   };
 
   return (

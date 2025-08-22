@@ -12,7 +12,7 @@ import { ArrowRightIcon } from './icons/ArrowRightIcon';
 import { LightbulbIcon } from './icons/LightbulbIcon';
 import { QuizIcon, TrophyIcon } from './icons/ToolIcons';
 import SetupInstructions from './SetupInstructions';
-import { motion } from 'framer-motion';
+import { motion } from 'framer-motion/dist/es/index.js';
 
 const ResourceLink: React.FC<{ title: string; url: string }> = ({ title, url }) => (
   <a href={url} target="_blank" rel="noopener noreferrer" className="block text-left no-underline group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 rounded-xl">

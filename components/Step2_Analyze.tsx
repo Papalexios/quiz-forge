@@ -11,7 +11,7 @@ import { LightbulbIcon } from './icons/LightbulbIcon';
 import { WorldIcon } from './icons/FormIcons';
 import { Spinner } from './common/Spinner';
 import { ConfirmationModal } from './common/ConfirmationModal';
-import { motion } from 'framer-motion';
+import { motion } from 'framer-motion/dist/es/index.js';
 
 const PostCard: React.FC<{ 
   post: WordPressPost, 

@@ -1,8 +1,8 @@
 import React from 'react';
-import { motion, Variants, SVGMotionProps } from 'framer-motion';
+import { motion, SVGMotionProps } from 'framer-motion/dist/es/index.js';
 
 export const Logo: React.FC<SVGMotionProps<SVGSVGElement>> = (props) => {
-  const containerVariants: Variants = {
+  const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -13,7 +13,7 @@ export const Logo: React.FC<SVGMotionProps<SVGSVGElement>> = (props) => {
     },
   };
 
-  const itemVariants: Variants = {
+  const itemVariants = {
     hidden: { scale: 0, opacity: 0, rotate: -30 },
     visible: {
       scale: 1,
